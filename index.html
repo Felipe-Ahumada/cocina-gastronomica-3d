@@ -119,8 +119,8 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       </div>
     </div>
     <div class="hint">
-      <span class="mouse">Arrastra para girar · rueda para acercar · clic derecho para desplazar · clic en un mueble para ver su ficha</span>
-      <span class="touch">Un dedo gira · dos dedos acercan y desplazan · toca un mueble para ver su ficha</span>
+      <span class="mouse">Arrastra para girar · rueda para acercar · clic derecho para desplazar · clic en un mueble o persona para ver su ficha</span>
+      <span class="touch">Un dedo gira · dos dedos acercan y desplazan · toca un mueble o persona para ver su ficha</span>
     </div>
   </main>
 
@@ -128,7 +128,7 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
     <header class="head">
       <p class="eyebrow">Modelo 3D · escala referencial</p>
       <h1>Cocina gastronómica</h1>
-      <p class="lede">El plano zonificado con su mobiliario y equipos. Gira el modelo, baja los muros y toca cualquier mueble o recinto para ver para qué sirve y qué norma cumple.</p>
+      <p class="lede">El plano zonificado con su mobiliario y equipos. Gira el modelo, baja los muros y toca cualquier mueble, recinto o persona para ver para qué sirve y qué norma cumple.</p>
       <p class="stats" id="stats"></p>
     </header>
 
@@ -138,6 +138,7 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       <h3 class="sec">Capas</h3>
       <div class="layers">
         <label class="layer"><input type="checkbox" id="ly-zonas" checked><span class="sw zonas"></span>Colores de zona</label>
+        <label class="layer"><input type="checkbox" id="ly-personas" checked><span class="sw plain" style="background:#F4F4F1"></span>Personas trabajando</label>
         <label class="layer"><input type="checkbox" id="ly-materia"><span class="sw" style="--c:#2F6FBF"></span>Flujo de materia prima</label>
         <label class="layer"><input type="checkbox" id="ly-personal"><span class="sw" style="--c:#7A63C2"></span>Flujo del personal</label>
         <label class="layer"><input type="checkbox" id="ly-vajilla"><span class="sw dash" style="--c:#C8352A"></span>Retorno de vajilla sucia</label>
@@ -702,6 +703,169 @@ function updateDots(t){
 }
 updateDots(0);
 
+/* ---------- Personas trabajando ---------- */
+const PM = new THREE.MeshStandardMaterial({color:0xF4F4F1, roughness:0.55});
+const peopleGrp = new THREE.Group(); scene.add(peopleGrp);
+const PEOPLE = [];
+function part(geo, parent, x, y, z){ const m = new THREE.Mesh(geo, PM); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; }
+function cylDown(rt, rb, h, seg){ const g = new THREE.CylinderGeometry(rt, rb, h, seg||10); g.translate(0, -h/2, 0); return g; }
+function makePerson(hat){
+  const root = new THREE.Group(), legs = [], arms = [];
+  for (const s of [-1,1]) {
+    const hip = new THREE.Object3D(); hip.position.set(s*0.085, 0.9, 0); root.add(hip);
+    part(cylDown(0.066, 0.052, 0.86, 10), hip, 0, 0, 0);
+    part(new THREE.BoxGeometry(0.1, 0.07, 0.24), hip, 0, -0.865, 0.04);
+    legs.push(hip);
+  }
+  const body = new THREE.Group(); body.position.y = 0.9; root.add(body);
+  part(new THREE.BoxGeometry(0.3, 0.16, 0.19), body, 0, 0.04, 0);
+  part(new THREE.CylinderGeometry(0.18, 0.15, 0.5, 14), body, 0, 0.33, 0).scale.z = 0.62;
+  part(new THREE.SphereGeometry(0.17, 14, 10), body, 0, 0.56, 0).scale.set(1, 0.45, 0.62);
+  part(new THREE.CylinderGeometry(0.045, 0.05, 0.09, 8), body, 0, 0.64, 0);
+  const head = new THREE.Group(); head.position.y = 0.68; body.add(head);
+  part(new THREE.SphereGeometry(0.115, 16, 12), head, 0, 0.06, 0);
+  if (hat === 'toque') { part(new THREE.CylinderGeometry(0.105, 0.095, 0.15, 14), head, 0, 0.2, 0); part(new THREE.SphereGeometry(0.125, 14, 8), head, 0, 0.29, 0).scale.y = 0.5; }
+  if (hat === 'cofia') part(new THREE.SphereGeometry(0.125, 14, 8, 0, Math.PI*2, 0, Math.PI/2), head, 0, 0.09, -0.005).scale.y = 0.8;
+  for (const s of [-1,1]) {
+    const sh = new THREE.Object3D(); sh.position.set(s*0.215, 0.52, 0); body.add(sh);
+    part(cylDown(0.05, 0.045, 0.3, 8), sh, 0, 0, 0);
+    const el = new THREE.Object3D(); el.position.y = -0.3; sh.add(el);
+    part(cylDown(0.044, 0.04, 0.27, 8), el, 0, 0, 0);
+    part(new THREE.SphereGeometry(0.05, 10, 8), el, 0, -0.29, 0);
+    sh.el = el; arms.push(sh);
+  }
+  return {root, body, head, L:legs[0], R:legs[1], aL:arms[0], aR:arms[1]};
+}
+function carryMesh(kind, body){
+  const g = new THREE.Group(); body.add(g);
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = true; g.add(m); return m; };
+  if (kind === 'box') add(new THREE.BoxGeometry(0.42, 0.26, 0.32), M.card, 0, 0.38, 0.36);
+  if (kind === 'pot') { add(new THREE.CylinderGeometry(0.17, 0.16, 0.22, 18), M.inox, 0, 0.36, 0.38); add(new THREE.CylinderGeometry(0.15, 0.15, 0.01, 18), M.oil, 0, 0.47, 0.38); }
+  if (kind === 'tray' || kind === 'dirty') {
+    add(new THREE.CylinderGeometry(0.22, 0.22, 0.015, 20), M.inoxD, 0.2, 0.27, 0.42);
+    [[0.12,0.36],[0.29,0.46],[0.16,0.5]].forEach(([x,z], i) => {
+      add(new THREE.CylinderGeometry(0.09, 0.07, 0.02, 16), M.white, x, 0.29, z);
+      if (kind === 'tray') add(new THREE.SphereGeometry(0.045, 10, 6), mc([0xC0564A,0x7DB36A,0xD7BE84][i]), x, 0.31, z).scale.y = 0.55;
+    });
+  }
+  return g;
+}
+function addPerson(o){
+  const p = makePerson(o.hat);
+  Object.assign(p, o, {hd:0, s:0});
+  const it = {r:o.r, name:o.name, desc:o.desc, group:p.root, person:true};
+  p.root.traverse(m => { if (m.isMesh) { m.userData.item = it; pickables.push(m); } });
+  if (o.carry) p.load = carryMesh(o.carry, p.body);
+  peopleGrp.add(p.root); PEOPLE.push(p);
+  if (o.path) {
+    p.pts = o.path.map(([px,pz]) => { const [x,z] = P(px,pz); return new THREE.Vector3(x,0,z); });
+    p.cum = [0]; for (let i=1;i<p.pts.length;i++) p.cum.push(p.cum[i-1] + p.pts[i].distanceTo(p.pts[i-1]));
+    p.len = p.cum[p.cum.length-1];
+    p.root.position.copy(p.pts[0]);
+  }
+  return p;
+}
+// Puesto fijo frente a un mueble: se ubica delante de su cara frontal y mira hacia él
+function station(r, act, px, pz, rot, dist, side, hat, name, desc, ph){
+  const [x,z] = P(px,pz), fx = Math.sin(rot), fz = Math.cos(rot);
+  const p = addPerson({r, act, hat, name, desc, ph: ph||0});
+  p.root.position.set(x + fx*dist + fz*side, 0, z + fz*dist - fx*side);
+  p.root.rotation.y = rot + Math.PI;
+}
+const cocinero = 'Entró por el filtro sanitario con cofia, delantal y manos lavadas, y no sale a zonas sucias sin volver a lavarse.';
+station(12,'stir',406,280,N0,0.77,0,'toque','Cocinero de línea','Trabaja la cocina de 6 quemadores bajo la campana. ' + cocinero, 0.3);
+station(12,'saute',468,280,N0,0.77,0,'toque','Cocinero en plancha','Saltea carnes y vegetales en la plancha, dentro de la línea de cocción.', 1.1);
+station(12,'stir',695,283,N0,0.77,0,'toque','Cocinero en marmita','Revuelve caldos, salsas y guisos de gran volumen en la marmita basculante.', 2.0);
+station(12,'chop',525,441,N0,0.67,-0.5,'toque','Cocinero en mesón central','Porciona y prepara lo que entra a la línea de cocción sobre acero inoxidable lavable.', 0.0);
+station(12,'chop',525,441,N0,0.67,0.6,'toque','Cocinero en mesón central','Porciona y prepara lo que entra a la línea de cocción sobre acero inoxidable lavable.', 0.7);
+station(13,'chop',24,614,WE,0.67,0,'cofia','Preelaborador de carnes','Trabaja solo crudos de origen animal, con tabla roja. No comparte mesón ni lavadero con vegetales.', 0.4);
+station(13,'wash',100,779,SO,0.67,0,'cofia','Preelaborador de vegetales','Lava y desinfecta frutas y verduras en su propio lavadero, separado del de carnes.', 1.3);
+station(14,'plate',370,776,SO,0.67,0,'toque','Cocinero de cuarto frío','Arma ensaladas y postres que se sirven sin cocción posterior.', 0.9);
+station(15,'plate',585,610,N0,0.72,-0.4,'toque','Jefe de montaje','Emplata lo que llega listo desde el cuarto caliente y el cuarto frío.', 0.2);
+station(15,'plate',585,730,SO,0.65,-0.5,'toque','Cocinero en el pase','Deja los platos bajo las lámparas del pase para que el garzón los retire desde el salón.', 1.7);
+station(17,'wash',775,646,N0,0.67,0,'cofia','Lavador de vajilla','Prelava con ducha y carga el lavavajillas de paso. No pasa a la zona limpia sin lavarse las manos.', 0.6);
+station(9,'wash',620,155,N0,0.7,0,'cofia','Lavador de ollas','Lava en una taza y enjuaga y sanitiza en la otra. Las ollas secan al aire, sin paños.', 2.4);
+station(8,'hands',350,145,N0,0.45,0,'cofia','Personal en el filtro sanitario','Se lava las manos antes de entrar a la cocina. Es el paso obligado de todo el personal.', 0.0);
+station(7,'shelf',18,230,WE,0.55,0,'cofia','Bodeguero','Ordena abarrotes con rotación FIFO: lo más antiguo queda adelante para usarse primero.', 1.0);
+addPerson({r:1, act:'walk', hat:'cofia', carry:'box', ph:0, path:[[90,55],[52,105],[55,165],[95,235]], name:'Recepción de mercadería', desc:'Lleva al almacén seco la mercadería ya revisada en recepción. Las cajas de proveedor no entran a la zona limpia.'});
+addPerson({r:12, act:'walk', hat:'toque', carry:'pot', ph:3, path:[[560,358],[650,358],[650,560],[665,640]], name:'Cocinero llevando preparaciones', desc:'Lleva lo cocinado desde la línea caliente a montaje, sin pasar por ninguna zona sucia.'});
+addPerson({r:0, act:'walk', hat:null, carry:'tray', ph:1.5, path:[[585,826],[560,850],[500,850],[470,842]], name:'Garzón', desc:'Retira los platos en el pase y los lleva a la mesa. No entra a la cocina.'});
+addPerson({r:0, act:'walk', hat:null, carry:'dirty', ph:4, path:[[770,848],[805,850],[820,822]], name:'Garzón con vajilla sucia', desc:'Devuelve la vajilla sucia por la puerta de lavado, separada de la salida de platos limpios.'});
+
+function pose(arm, ax, inw, el){ arm.rotation.set(ax, 0, arm.position.x > 0 ? -inw : inw); arm.el.rotation.x = el; }
+const smooth = k => k*k*(3 - 2*k);
+let lastPT = 0;
+function updatePeople(ms){
+  const t = ms/1000, dt = Math.min(0.1, Math.max(0, t - lastPT)); lastPT = t;
+  for (const p of PEOPLE) {
+    const T = t + p.ph, sn = Math.sin;
+    p.L.rotation.x = 0; p.R.rotation.x = 0;
+    p.body.position.y = 0.9 + 0.006*sn(T*2); p.body.rotation.set(0,0,0); p.head.rotation.set(0,0,0);
+    switch (p.act) {
+      case 'chop':
+        pose(p.aR, -0.45, 0.1, -1.0 - 0.32*(0.5 + 0.5*sn(T*9)));
+        pose(p.aL, -0.5, 0.25, -0.95);
+        p.head.rotation.x = 0.4; p.body.rotation.x = 0.06; break;
+      case 'stir':
+        pose(p.aR, -0.62 + 0.14*sn(T*3.5), 0.12*Math.cos(T*3.5), -0.75);
+        pose(p.aL, -0.15, 0, -0.35);
+        p.head.rotation.x = 0.3; p.body.rotation.y = 0.05*sn(T*3.5); break;
+      case 'saute':
+        pose(p.aR, -0.5 - 0.22*Math.max(0, sn(T*5)), 0.05, -0.95);
+        pose(p.aL, -0.45, 0.2, -0.9 + 0.1*sn(T*5 + 1));
+        p.head.rotation.x = 0.35; break;
+      case 'wash':
+        pose(p.aR, -0.5, 0.18 + 0.08*sn(T*6), -0.85 + 0.22*sn(T*6));
+        pose(p.aL, -0.5, 0.18 - 0.08*sn(T*6), -0.85 - 0.22*sn(T*6));
+        p.head.rotation.x = 0.4; p.body.rotation.x = 0.08; break;
+      case 'hands':
+        pose(p.aR, -0.42, 0.32 + 0.06*sn(T*8), -1.05 + 0.12*sn(T*8));
+        pose(p.aL, -0.42, 0.32 - 0.06*sn(T*8), -1.05 - 0.12*sn(T*8));
+        p.head.rotation.x = 0.45; break;
+      case 'plate':
+        pose(p.aR, -0.6 + 0.25*sn(T*1.8), 0.08, -0.7);
+        pose(p.aL, -0.6 + 0.25*sn(T*1.8 + Math.PI), 0.08, -0.7);
+        p.body.rotation.y = 0.22*sn(T*0.9); p.head.rotation.x = 0.3; break;
+      case 'shelf': {
+        const u = (T % 5)/5, k = u < 0.2 ? smooth(u/0.2) : u < 0.55 ? 1 : u < 0.75 ? 1 - smooth((u - 0.55)/0.2) : 0;
+        pose(p.aR, -0.25 - 2.35*k, 0.05, -0.2 - 0.3*(1 - k));
+        pose(p.aL, -0.5, 0.15, -0.95);
+        p.head.rotation.x = -0.4*k + 0.15*(1 - k); break;
+      }
+      case 'walk': {
+        const v = 0.95, pause = 2.2, tw = p.len/v, cyc = 2*(tw + pause), u = ((T*1) % cyc + cyc) % cyc;
+        let s, moving = true, fwd = true;
+        if (u < tw) s = u*v;
+        else if (u < tw + pause) { s = p.len; moving = false; }
+        else if (u < 2*tw + pause) { s = p.len - (u - tw - pause)*v; fwd = false; }
+        else { s = 0; moving = false; fwd = false; }
+        let i = 1; while (i < p.cum.length - 1 && p.cum[i] < s) i++;
+        const a = p.pts[i-1], b = p.pts[i], sl = p.cum[i] - p.cum[i-1], k = sl ? (s - p.cum[i-1])/sl : 0;
+        p.root.position.lerpVectors(a, b, k);
+        if (moving) {
+          const dx = (b.x - a.x)*(fwd ? 1 : -1), dz = (b.z - a.z)*(fwd ? 1 : -1);
+          let diff = Math.atan2(dx, dz) - p.hd; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+          p.hd += diff*Math.min(1, dt*7 || 1);
+        }
+        p.root.rotation.y = p.hd;
+        const st = moving ? Math.sin(2*Math.PI*s/1.3) : 0;
+        p.L.rotation.x = 0.45*st; p.R.rotation.x = -0.45*st;
+        p.body.position.y = 0.9 + (moving ? 0.022*Math.abs(Math.cos(2*Math.PI*s/1.3)) : 0);
+        const loaded = fwd || u < tw + pause*0.5;
+        if (p.load) p.load.visible = loaded;
+        if (loaded && (p.carry === 'box' || p.carry === 'pot')) { pose(p.aR, -0.4, 0, -1.17); pose(p.aL, -0.4, 0, -1.17); }
+        else {
+          if (loaded) pose(p.aR, -0.4, 0, -1.17); else pose(p.aR, 0.35*st, 0.04, -0.2);
+          pose(p.aL, -0.35*st, 0.04, -0.2);
+        }
+        if (!moving) p.head.rotation.x = 0.2;
+        break;
+      }
+    }
+  }
+}
+updatePeople(0);
+
 const grid = new THREE.GridHelper(16, 16, 0x6c736d, 0x9aa19a);
 grid.position.y = 0.016; grid.material.transparent = true; grid.material.opacity = 0.55; grid.visible = false; scene.add(grid);
 
@@ -795,6 +959,7 @@ const layer = (id, fn) => { const el = document.getElementById(id); const run = 
 layer('ly-zonas', on => ROOMS.forEach(r => r.mat.color.setHex(on ? ZONES[r.zone].floor : NEUTRAL_FLOOR)));
 ['materia','personal','vajilla','desechos','evac'].forEach(k => layer('ly-' + k, on => FLOWS[k].group.visible = on));
 layer('ly-grid', on => grid.visible = on);
+layer('ly-personas', on => peopleGrp.visible = on);
 
 /* ---------- Etiquetas ---------- */
 const labelsEl = document.getElementById('labels');
@@ -834,7 +999,7 @@ ROOMS.forEach(r => {
 });
 document.getElementById('zonelegend').innerHTML = ['sucia','pre','limpia','alm','control','personal','circ'].map(k => zoneChip(ZONES[k])).join('');
 const nIn = ITEMS.filter(i => i.r > 0).length;
-document.getElementById('stats').textContent = `${nIn} muebles, equipos y elementos de seguridad en ${ROOMS.length} recintos`;
+document.getElementById('stats').textContent = `${nIn} muebles, equipos y elementos de seguridad en ${ROOMS.length} recintos · ${PEOPLE.length} personas trabajando`;
 
 /* ---------- Puntero ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -898,7 +1063,8 @@ function loop(t){
     if (k >= 1) anim = null;
   }
   controls.update();
-  if (!reduced) updateDots(t);
+  if (!reduced) { updateDots(t); updatePeople(t); }
+  if (sel && sel.kind === 'item' && sel.ref.person) itemBox(sel.ref, selBox.box);
   renderer.render(scene, camera);
   updateLabels();
 }
