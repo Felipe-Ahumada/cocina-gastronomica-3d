@@ -38,10 +38,20 @@ body{background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-siz
 .seg button{font:500 13px/1 var(--font-ui); color:var(--fg); background:transparent; border:0; border-radius:6px; padding:8px 10px; min-height:34px; cursor:pointer}
 .seg button:hover{background:var(--soft)}
 .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+.seg button.danger{display:inline-flex; align-items:center; gap:7px; background:#C8352A; color:#fff; font-weight:600}
+.seg button.danger:hover{background:#A92A20}
+.seg button.danger:disabled{background:var(--soft); color:var(--muted); cursor:default}
+.seg button.danger .dot{width:8px; height:8px; border-radius:50%; background:currentColor; flex:none}
+.seg button.danger:disabled .dot{background:#E0930B; animation:blink 1s steps(2,start) infinite}
+@keyframes blink{to{visibility:hidden}}
 button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .hint{position:absolute; left:12px; bottom:12px; right:12px; pointer-events:none; display:flex}
 .hint span{background:var(--panel); border:1px solid var(--line); color:var(--muted); padding:6px 10px; border-radius:6px; font:400 12px/1.4 var(--font-ui)}
 .hint .touch{display:none}
+.subs{position:absolute; left:50%; bottom:58px; transform:translateX(-50%); max-width:min(620px, calc(100% - 32px)); pointer-events:none;
+  background:rgb(16 19 18 / .82); color:#fff; padding:9px 14px; border-radius:8px; font:500 15px/1.4 var(--font-ui); text-align:center;
+  opacity:0; transition:opacity .25s}
+.subs.on{opacity:1}
 @media (pointer:coarse){ .hint .mouse{display:none} .hint .touch{display:inline-block} }
 .labels{position:absolute; inset:0; pointer-events:none; overflow:hidden}
 .lbl{position:absolute; left:0; top:0; display:inline-flex; align-items:center; gap:6px; background:var(--panel); color:var(--fg);
@@ -97,6 +107,14 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
   .stage{height:62vh; min-height:380px}
   .panel{overflow:visible}
 }
+.sim{list-style:none; margin:0 0 10px; padding:0; display:grid; gap:4px; counter-reset:paso}
+.sim li{counter-increment:paso; display:grid; grid-template-columns:22px 1fr; gap:8px; align-items:start; padding:7px 9px; border-radius:8px; border:1px solid var(--line); color:var(--muted); line-height:1.35; font-size:13px; transition:background .25s, color .25s, border-color .25s}
+.sim li::before{content:counter(paso); font:600 11px/20px var(--font-mono); width:20px; height:20px; border-radius:50%; text-align:center; background:var(--soft); color:var(--muted)}
+.sim li.on{color:var(--fg); border-color:var(--sel); background:color-mix(in srgb, var(--sel) 12%, var(--panel))}
+.sim li.on::before{background:var(--sel); color:#fff}
+.sim-bar{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.sim-bar button{font:500 13px/1 var(--font-ui); color:var(--accent-ink); background:var(--accent); border:0; border-radius:7px; padding:9px 12px; cursor:pointer}
+.sim-bar .mono{font:500 11.5px/1.3 var(--font-mono); color:var(--muted)}
 @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto} }
 </style>
 
@@ -117,7 +135,12 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
         <button type="button" id="w-low" data-wall="low" aria-pressed="true">Bajos</button>
         <button type="button" id="w-off" data-wall="off" aria-pressed="false">Ocultos</button>
       </div>
+      <div class="seg" role="group" aria-label="Simulacro">
+        <button type="button" id="accidente" class="danger"><span class="dot"></span><span id="acc-txt">Accidente</span></button>
+        <button type="button" id="voz" aria-pressed="true" title="Activar o silenciar la voz que relata el accidente">Narración</button>
+      </div>
     </div>
+    <div class="subs" id="subs" aria-live="polite"></div>
     <div class="hint">
       <span class="mouse">Arrastra para girar · rueda para acercar · clic derecho para desplazar · clic en un mueble o persona para ver su ficha</span>
       <span class="touch">Un dedo gira · dos dedos acercan y desplazan · toca un mueble o persona para ver su ficha</span>
@@ -139,6 +162,7 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       <div class="layers">
         <label class="layer"><input type="checkbox" id="ly-zonas" checked><span class="sw zonas"></span>Colores de zona</label>
         <label class="layer"><input type="checkbox" id="ly-personas" checked><span class="sw plain" style="background:#F4F4F1"></span>Personas trabajando</label>
+        <label class="layer"><input type="checkbox" id="ly-sim" checked><span class="sw" style="--c:#E0930B"></span>Simulacro de fuego</label>
         <label class="layer"><input type="checkbox" id="ly-materia"><span class="sw" style="--c:#2F6FBF"></span>Flujo de materia prima</label>
         <label class="layer"><input type="checkbox" id="ly-personal"><span class="sw" style="--c:#7A63C2"></span>Flujo del personal</label>
         <label class="layer"><input type="checkbox" id="ly-vajilla"><span class="sw dash" style="--c:#C8352A"></span>Retorno de vajilla sucia</label>
@@ -153,6 +177,19 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
     <section>
       <h3 class="sec">Recintos</h3>
       <div class="rooms" id="rooms"></div>
+    </section>
+
+    <section>
+      <h3 class="sec">Simulacro: fuego en la ropa</h3>
+      <ol class="sim" id="sim-steps">
+        <li data-a="4" data-b="5.2">Se enciende la ropa de un cocinero junto a la sartén basculante.</li>
+        <li data-a="5.2" data-b="9.6">Detente, tírate al suelo y rueda cubriéndote la cara. Nunca correr: el aire aviva las llamas.</li>
+        <li data-a="4.4" data-b="12.4">Un compañero trae la manta ignífuga y lo cubre para ahogar el fuego, sin echarle agua ni aceite encima.</li>
+        <li data-a="13.6" data-b="30.1">Enfriar la quemadura con agua corriente fría por 20 minutos. Sin hielo, cremas ni mantequilla, y sin arrancar ropa pegada a la piel.</li>
+        <li data-a="20.4" data-b="30">Llamar al SAMU (131) y avisar al supervisor.</li>
+      </ol>
+      <div class="sim-bar"><button type="button" id="sim-go">Ver de cerca</button><span class="mono" id="sim-clock"></span></div>
+      <p class="note" style="margin-top:8px">Aprieta Accidente, arriba junto a Vista y Muros, para iniciar el simulacro.</p>
     </section>
 
     <p class="note">Medidas referenciales derivadas del boceto, sin cotas reales. Antes de construir, valida el diseño con un arquitecto y con la SEREMI de Salud.</p>
@@ -518,6 +555,7 @@ const B = {
     bx(0.02,0.25,0.02,M.black,0.09,0.95,0.03); bx(0.12,0.04,0.06,M.inoxD,0,0.75,-0.07);
     wm(bx(0.2,0.28,0.012,M.red,0,1.5,-0.09));
   },
+  manta(){ bx(0.34,0.4,0.11,M.red,0,0.92,0); bx(0.3,0.05,0.115,M.white,0,1.0,0); bx(0.06,0.06,0.02,M.white,0,1.1,0.06); bx(0.04,0.08,0.03,M.white,-0.08,0.7,0.06); bx(0.04,0.08,0.03,M.white,0.08,0.7,0.06); },
   luz(){ bx(0.34,0.1,0.08,M.white,0,2.38,0); bx(0.28,0.04,0.012,M.yellow,0,2.36,0.043); },
   salida(){ bx(0.42,0.17,0.035,M.green,0,2.28,0); bx(0.1,0.1,0.006,M.white,-0.12,2.28,0.02); bx(0.18,0.03,0.006,M.white,0.07,2.28,0.02); },
   evaporador(){ bx(1.0,0.36,0.42,M.white,0,2.25,0); for (const sx of [-0.25,0.25]) { const f = cy(0.13,0.13,0.012,M.black,sx,2.25,0.212,20); f.rotation.x = Math.PI/2; } },
@@ -621,6 +659,7 @@ F(12,'salida',856,380,EA,{},'Señal de salida de emergencia','Verde, fotoluminis
 F(12,'sumidero',470,345,N0,{},'Sumidero con rejilla',T.sumidero);
 F(12,'sumidero',700,345,N0,{},'Sumidero con rejilla',T.sumidero);
 F(12,'sumidero',600,490,N0,{},'Sumidero con rejilla',T.sumidero);
+F(12,'manta',853,500,EA,{},'Manta ignífuga','Para ahogar fuego en la ropa de una persona o en un recipiente pequeño. Se tira de las cintas y se cubre desde la cabeza hacia los pies.');
 // 13 Producción
 F(13,'mesa',24,614,WE,{w:1.8,d:0.7,board:'boardRed'},'Mesón de carnes','Solo carnes, aves y pescados crudos. Tabla de corte roja.');
 F(13,'fregadero',24,710,WE,{w:1.0,d:0.7,n:1},'Lavadero de carnes','Exclusivo para crudos de origen animal.');
@@ -776,8 +815,7 @@ const cocinero = 'Entró por el filtro sanitario con cofia, delantal y manos lav
 station(12,'stir',406,280,N0,0.77,0,'toque','Cocinero de línea','Trabaja la cocina de 6 quemadores bajo la campana. ' + cocinero, 0.3);
 station(12,'saute',468,280,N0,0.77,0,'toque','Cocinero en plancha','Saltea carnes y vegetales en la plancha, dentro de la línea de cocción.', 1.1);
 station(12,'stir',695,283,N0,0.77,0,'toque','Cocinero en marmita','Revuelve caldos, salsas y guisos de gran volumen en la marmita basculante.', 2.0);
-station(12,'chop',525,441,N0,0.67,-0.5,'toque','Cocinero en mesón central','Porciona y prepara lo que entra a la línea de cocción sobre acero inoxidable lavable.', 0.0);
-station(12,'chop',525,441,N0,0.67,0.6,'toque','Cocinero en mesón central','Porciona y prepara lo que entra a la línea de cocción sobre acero inoxidable lavable.', 0.7);
+station(12,'chop',525,399,SO,0.67,0.5,'toque','Cocinero en mesón central','Porciona y prepara lo que entra a la línea de cocción sobre acero inoxidable lavable.', 0.0);
 station(13,'chop',24,614,WE,0.67,0,'cofia','Preelaborador de carnes','Trabaja solo crudos de origen animal, con tabla roja. No comparte mesón ni lavadero con vegetales.', 0.4);
 station(13,'wash',100,779,SO,0.67,0,'cofia','Preelaborador de vegetales','Lava y desinfecta frutas y verduras en su propio lavadero, separado del de carnes.', 1.3);
 station(14,'plate',370,776,SO,0.67,0,'toque','Cocinero de cuarto frío','Arma ensaladas y postres que se sirven sin cocción posterior.', 0.9);
@@ -788,7 +826,7 @@ station(9,'wash',620,155,N0,0.7,0,'cofia','Lavador de ollas','Lava en una taza y
 station(8,'hands',350,145,N0,0.45,0,'cofia','Personal en el filtro sanitario','Se lava las manos antes de entrar a la cocina. Es el paso obligado de todo el personal.', 0.0);
 station(7,'shelf',18,230,WE,0.55,0,'cofia','Bodeguero','Ordena abarrotes con rotación FIFO: lo más antiguo queda adelante para usarse primero.', 1.0);
 addPerson({r:1, act:'walk', hat:'cofia', carry:'box', ph:0, path:[[90,55],[52,105],[55,165],[95,235]], name:'Recepción de mercadería', desc:'Lleva al almacén seco la mercadería ya revisada en recepción. Las cajas de proveedor no entran a la zona limpia.'});
-addPerson({r:12, act:'walk', hat:'toque', carry:'pot', ph:3, path:[[560,358],[650,358],[650,560],[665,640]], name:'Cocinero llevando preparaciones', desc:'Lleva lo cocinado desde la línea caliente a montaje, sin pasar por ninguna zona sucia.'});
+addPerson({r:12, act:'walk', hat:'toque', carry:'pot', ph:3, path:[[640,340],[632,390],[632,560],[668,640]], name:'Cocinero llevando preparaciones', desc:'Lleva lo cocinado desde la línea caliente a montaje, sin pasar por ninguna zona sucia.'});
 addPerson({r:0, act:'walk', hat:null, carry:'tray', ph:1.5, path:[[585,826],[560,850],[500,850],[470,842]], name:'Garzón', desc:'Retira los platos en el pase y los lleva a la mesa. No entra a la cocina.'});
 addPerson({r:0, act:'walk', hat:null, carry:'dirty', ph:4, path:[[770,848],[805,850],[820,822]], name:'Garzón con vajilla sucia', desc:'Devuelve la vajilla sucia por la puerta de lavado, separada de la salida de platos limpios.'});
 
@@ -801,7 +839,7 @@ function updatePeople(ms){
     const T = t + p.ph, sn = Math.sin;
     p.L.rotation.x = 0; p.R.rotation.x = 0;
     p.body.position.y = 0.9 + 0.006*sn(T*2); p.body.rotation.set(0,0,0); p.head.rotation.set(0,0,0);
-    switch (p.act) {
+    switch (p.sim ? p.sim(p, t, dt) : p.act) {
       case 'chop':
         pose(p.aR, -0.45, 0.1, -1.0 - 0.32*(0.5 + 0.5*sn(T*9)));
         pose(p.aL, -0.5, 0.25, -0.95);
@@ -866,6 +904,281 @@ function updatePeople(ms){
 }
 updatePeople(0);
 
+/* ---------- Simulacro: fuego en la ropa ---------- */
+const SIM_C = 30;
+const simGrp = new THREE.Group(); scene.add(simGrp);
+const lerp = (a,b,k) => a + (b - a)*k;
+const clamp01 = k => Math.max(0, Math.min(1, k));
+const ramp = (u,a,b) => smooth(clamp01((u - a)/(b - a)));
+const angLerp = (a,b,k) => { const d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d*k; };
+const W3 = (px,pz) => { const [x,z] = P(px,pz); return new THREE.Vector3(x,0,z); };
+function mkPath(arr){ const pts = arr.map(([a,b]) => W3(a,b)), cum = [0]; for (let i=1;i<pts.length;i++) cum.push(cum[i-1] + pts[i].distanceTo(pts[i-1])); return {pts, cum, len:cum[cum.length-1]}; }
+function along(pa, s){
+  s = Math.max(0, Math.min(pa.len, s)); let i = 1;
+  while (i < pa.cum.length - 1 && pa.cum[i] < s) i++;
+  const a = pa.pts[i-1], b = pa.pts[i], sl = pa.cum[i] - pa.cum[i-1], k = sl ? (s - pa.cum[i-1])/sl : 0;
+  return {pos:new THREE.Vector3().lerpVectors(a, b, k), hd:Math.atan2(b.x - a.x, b.z - a.z)};
+}
+function simPerson(o){
+  const p = addPerson(o);
+  p.outer = new THREE.Group(); p.lay = new THREE.Group(); p.roll = new THREE.Group();
+  peopleGrp.remove(p.root); simGrp.add(p.outer); p.outer.add(p.lay); p.lay.add(p.roll); p.roll.add(p.root);
+  p.root.position.set(0,0,0); p.hd = 0;
+  return p;
+}
+function stride(p, s, run){
+  const st = Math.sin(2*Math.PI*s/(run ? 1.8 : 1.3)), amp = run ? 0.7 : 0.45;
+  p.L.rotation.x = amp*st; p.R.rotation.x = -amp*st;
+  p.body.position.y = 0.9 + (run ? 0.04 : 0.022)*Math.abs(Math.cos(2*Math.PI*s/(run ? 1.8 : 1.3)));
+  if (run) p.body.rotation.x = 0.12;
+  return st;
+}
+function walkTo(p, pa, s, run, dt){
+  const r = along(pa, s); p.outer.position.copy(r.pos);
+  p.hd = angLerp(p.hd, r.hd, Math.min(1, dt*9 || 1)); p.outer.rotation.y = p.hd;
+  return stride(p, s, run);
+}
+
+// Posiciones clave (px del plano)
+const V0 = W3(765,329), V1 = W3(760,395);
+const vPath = mkPath([[760,395],[700,500],[430,502],[300,490]]);
+const rPath1 = mkPath([[561,480],[625,486],[818,496]]);
+const rPath2 = mkPath([[818,496],[760,450],[710,430]]);
+const rPath3 = mkPath([[710,430],[640,484],[430,486],[322,456]]);
+const R0 = rPath1.pts[0];
+
+const victim = simPerson({r:12, act:'sim', hat:'toque', ph:0, name:'Simulacro: fuego en la ropa',
+  desc:'Se le enciende el delantal junto a la sartén basculante. No corre: se detiene, se tira al suelo y rueda cubriéndose la cara. Después enfría la quemadura con agua corriente fría por 20 minutos.'});
+const rescuer = simPerson({r:12, act:'sim', hat:'toque', ph:0, name:'Compañero que rescata',
+  desc:'Deja su puesto, toma la manta ignífuga y cubre a su compañero para ahogar las llamas. Luego lo acompaña al lavamanos y llama al SAMU (131).'});
+
+// Llamas: conos que siempre apuntan hacia arriba aunque la persona esté en el suelo
+const flameMats = [0xFF5A1F, 0xFF8A1E, 0xFFC23A].map(c => new THREE.MeshBasicMaterial({color:c, transparent:true, opacity:0.88, depthWrite:false}));
+const FL = [[0,1.15,0.1,0.13,0.5],[0.12,1.3,0.05,0.1,0.4],[-0.12,1.25,0.06,0.1,0.42],[0.08,1.0,0.12,0.11,0.38],[-0.07,0.95,0.11,0.1,0.36],
+  [0.09,0.62,0.07,0.08,0.3],[-0.09,0.55,0.07,0.08,0.28],[0,1.45,-0.02,0.09,0.36],[0.2,1.1,-0.03,0.08,0.3],[-0.2,1.08,-0.02,0.08,0.3],[0.03,0.8,0.12,0.09,0.32]];
+const flames = FL.map(([x,y,z,r,h], i) => {
+  const g = new THREE.ConeGeometry(r, h, 10); g.translate(0, h/2, 0);
+  const m = new THREE.Mesh(g, flameMats[i % 3]); m.position.set(x,y,z); m.renderOrder = 2; victim.root.add(m);
+  const core = new THREE.Mesh(new THREE.ConeGeometry(r*0.5, h*0.6, 8).translate(0, h*0.3, 0), flameMats[2]); m.add(core);
+  return {m, h, ph:i*1.73};
+});
+const fireLight = new THREE.PointLight(0xFF7A26, 0, 4.5, 2); fireLight.position.set(0, 1.1, 0.2); victim.root.add(fireLight);
+const qTmp = new THREE.Quaternion();
+function setFire(f, t){
+  victim.root.getWorldQuaternion(qTmp); qTmp.invert();
+  flames.forEach(o => {
+    const k = f*(0.75 + 0.25*Math.sin(t*17 + o.ph) + 0.12*Math.sin(t*29 + o.ph*2));
+    o.m.visible = f > 0.02; o.m.quaternion.copy(qTmp);
+    o.m.scale.set(Math.max(0.01, f*(0.85 + 0.15*Math.sin(t*13 + o.ph))), Math.max(0.01, k), Math.max(0.01, f));
+  });
+  fireLight.intensity = f*(2.2 + 0.6*Math.sin(t*23));
+}
+
+// Manta ignífuga
+const blanket = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), mc(0xC9BEA4,{roughness:0.95}));
+blanket.rotation.order = 'YXZ'; blanket.castShadow = true; blanket.visible = false; simGrp.add(blanket);
+const B_END = W3(712,395); B_END.y = 0.27;
+const fwd = new THREE.Vector3();
+
+let simU = 0, simStart = null;
+const accBtn = document.getElementById('accidente'), accTxt = document.getElementById('acc-txt');
+let followOn = false;
+function endAccident(){ simStart = null; accBtn.disabled = false; accTxt.textContent = 'Accidente'; followOn = false; setView('iso'); if (typeof narrate === 'function') narrate(END_CUE); }
+victim.sim = (p, t, dt) => {
+  if (simStart !== null && t - simStart >= SIM_C) endAccident();
+  const u = simStart === null ? 0 : t - simStart; simU = u;
+  p.lay.rotation.x = 0; p.lay.position.y = 0; p.roll.rotation.y = 0;
+  let f = 0;
+  if (u < 4) { p.outer.position.copy(V0); p.hd = Math.PI; p.outer.rotation.y = p.hd; setFire(0, t); return 'saute'; }
+  // fuego
+  if (u < 9.5) f = ramp(u, 4, 4.5)*(1 - 0.35*ramp(u, 6, 9.5));
+  else f = 0.65*(1 - ramp(u, 9.5, 10.4));
+  setFire(f, t);
+  if (u < 5.2) {                       // sorpresa: retrocede y gira
+    const k = ramp(u, 4, 5.2);
+    p.outer.position.lerpVectors(V0, V1, k); p.hd = angLerp(Math.PI, Math.PI/2, k); p.outer.rotation.y = p.hd;
+    const w = Math.sin(t*16);
+    pose(p.aR, -2.3 + 0.5*w, 0.35, -0.6); pose(p.aL, -2.3 - 0.5*w, 0.35, -0.6);
+    p.L.rotation.x = 0.25*Math.sin(t*12); p.R.rotation.x = -0.25*Math.sin(t*12); p.head.rotation.x = 0.3;
+    return null;
+  }
+  p.outer.position.copy(V1);
+  if (u < 13.6) {                      // al suelo, rueda y queda cubierto
+    p.hd = Math.PI/2; p.outer.rotation.y = p.hd;
+    const down = u < 12.4 ? ramp(u, 5.2, 6.0) : 1 - ramp(u, 12.4, 13.6);
+    p.lay.rotation.x = -Math.PI/2*down; p.lay.position.y = 0.16*down;
+    const env = ramp(u, 6.0, 6.4)*(1 - ramp(u, 9.2, 9.8));
+    p.roll.rotation.y = 0.85*Math.PI*Math.sin((u - 6.0)*2.4)*env;
+    pose(p.aR, -2.4*down, 0.55, -1.9*down); pose(p.aL, -2.4*down, 0.55, -1.9*down);   // brazos cubriendo la cara
+    p.L.rotation.x = 0.1*down; p.R.rotation.x = -0.1*down;
+    return null;
+  }
+  if (u < 13.8) { p.outer.rotation.y = p.hd; pose(p.aR, 0, 0.05, -0.2); pose(p.aL, -0.6, 0.2, -1.3); return null; }
+  if (u < 20.5) {                      // camina al lavamanos sujetando el brazo quemado
+    walkTo(p, vPath, (u - 13.8)*vPath.len/6.7, false, dt);
+    pose(p.aR, -0.5, 0.3, -1.4); pose(p.aL, -0.55, 0.45, -1.2); p.head.rotation.x = 0.25;
+    return null;
+  }
+  p.outer.position.copy(vPath.pts[vPath.pts.length - 1]); p.hd = angLerp(p.hd, -Math.PI/2, Math.min(1, dt*6 || 1)); p.outer.rotation.y = p.hd;
+  return 'hands';
+};
+
+rescuer.sim = (p, t, dt) => {
+  const u = simU;
+  if (u < 4.4) { p.outer.position.copy(R0); p.hd = Math.PI; p.outer.rotation.y = p.hd; blanket.visible = false; return 'chop'; }
+  if (u < 5.0) {                       // se da cuenta
+    p.outer.position.copy(R0); p.outer.rotation.y = p.hd;
+    p.head.rotation.y = 0.6*ramp(u, 4.4, 4.7); pose(p.aR, -0.2, 0.05, -0.3); pose(p.aL, -0.2, 0.05, -0.3);
+    return null;
+  }
+  if (u < 6.4) {                       // corre a la manta
+    const st = walkTo(p, rPath1, (u - 5.0)*rPath1.len/1.4, true, dt);
+    pose(p.aR, -0.7*st, 0.05, -1.3); pose(p.aL, 0.7*st, 0.05, -1.3);
+    return null;
+  }
+  const held = () => {
+    fwd.set(Math.sin(p.hd), 0, Math.cos(p.hd));
+    blanket.position.copy(p.outer.position).addScaledVector(fwd, 0.42); blanket.position.y = 1.08;
+    blanket.rotation.set(Math.PI/2, p.hd, 0); blanket.scale.set(0.95, 0.03, 0.85); blanket.visible = true;
+    pose(p.aR, -1.15, 0.15, -0.55); pose(p.aL, -1.15, 0.15, -0.55);
+  };
+  if (u < 7.0) {                       // saca la manta
+    p.outer.position.copy(rPath1.pts[rPath1.pts.length - 1]); p.hd = angLerp(p.hd, Math.PI/2, Math.min(1, dt*9 || 1)); p.outer.rotation.y = p.hd;
+    if (u < 6.7) { blanket.visible = false; pose(p.aR, -1.7*ramp(u, 6.4, 6.6), 0.1, -0.3); pose(p.aL, -0.3, 0.05, -0.3); }
+    else held();
+    return null;
+  }
+  if (u < 7.8) { walkTo(p, rPath2, (u - 7.0)*rPath2.len/0.8, false, dt); held(); return null; }
+  p.outer.position.copy(rPath2.pts[rPath2.pts.length - 1]);
+  if (u < 8.8) { p.hd = angLerp(p.hd, Math.PI, Math.min(1, dt*8 || 1)); p.outer.rotation.y = p.hd; held(); return null; }
+  if (u < 12.2) {                      // lanza la manta y presiona
+    p.hd = Math.PI; p.outer.rotation.y = p.hd;
+    const k = ramp(u, 8.8, 9.5);
+    fwd.set(0, 0, -1);
+    const from = p.outer.position.clone().addScaledVector(fwd, 0.42); from.y = 1.08;
+    blanket.position.lerpVectors(from, B_END, k);
+    blanket.rotation.set(lerp(Math.PI/2, 0, k), lerp(Math.PI, Math.PI/2, k), 0);
+    blanket.scale.set(lerp(0.95, 0.85, k), lerp(0.03, 0.05, k), lerp(0.85, 1.75, k));
+    blanket.position.y += 0.01*Math.sin(t*5)*k;
+    blanket.visible = true;
+    const press = u > 9.5 ? 0.06*Math.sin((u - 9.5)*7) : 0;
+    p.body.rotation.x = 0.55*k; p.head.rotation.x = 0.3*k;
+    pose(p.aR, lerp(-1.15, -0.85, k) + press, 0.15, lerp(-0.55, -0.25, k)); pose(p.aL, lerp(-1.15, -0.85, k) + press, 0.15, lerp(-0.55, -0.25, k));
+    return null;
+  }
+  if (u < 13.6) {                      // retira la manta y lo ayuda a pararse
+    p.outer.rotation.y = p.hd;
+    const k = ramp(u, 12.2, 12.8);
+    blanket.visible = k < 0.98; blanket.scale.set(0.85*(1 - k) + 0.01, 0.05, 1.75*(1 - k) + 0.01);
+    blanket.position.lerpVectors(B_END, p.outer.position.clone().setY(1.0).addScaledVector(fwd.set(0,0,-1), 0.3), k);
+    p.body.rotation.x = 0.55*(1 - ramp(u, 12.2, 13.0)) + 0.2*ramp(u, 12.4, 13.0)*(1 - ramp(u, 13.0, 13.6));
+    pose(p.aR, -0.9, 0.1, -0.4); pose(p.aL, -0.6, 0.1, -0.5);
+    return null;
+  }
+  blanket.visible = false;
+  if (u < 20.4) { const st = walkTo(p, rPath3, (u - 13.6)*rPath3.len/6.8, false, dt); pose(p.aR, -0.35*st, 0.04, -0.2); pose(p.aL, 0.35*st, 0.04, -0.2); return null; }
+  // llama al SAMU
+  p.outer.position.copy(rPath3.pts[rPath3.pts.length - 1]);
+  p.hd = angLerp(p.hd, -2.4, Math.min(1, dt*6 || 1)); p.outer.rotation.y = p.hd;
+  pose(p.aR, -0.25, 0.55, -2.55*ramp(u, 20.4, 20.9)); pose(p.aL, -0.1, 0.05, -0.2); p.head.rotation.y = 0.2;
+  return null;
+};
+
+const simSteps = Array.from(document.querySelectorAll('#sim-steps li'));
+const simClock = document.getElementById('sim-clock');
+let lastStepKey = '';
+
+/* ---------- Narración del accidente (voz del navegador + subtítulos) ---------- */
+const CUES = [
+  {u:4.0,  txt:'Atención: se encendió la ropa de un cocinero.'},
+  {u:5.6,  txt:'No corre. Se tira al suelo y rueda, cubriéndose la cara.'},
+  {u:8.9,  txt:'Un compañero lo cubre con la manta ignífuga para ahogar el fuego.'},
+  {u:12.6, txt:'El fuego se apagó. Lo ayuda a levantarse y lo lleva al lavamanos.'},
+  {u:17.2, txt:'La quemadura se enfría con agua corriente fría por veinte minutos, sin hielo ni cremas.'},
+  {u:22.4, txt:'Su compañero llama al SAMU, al ciento treinta y uno, y avisa al supervisor.'}
+];
+const END_CUE = 'Simulacro terminado. Se vuelve al trabajo normal.';
+const synth = window.speechSynthesis || null;
+const subsEl = document.getElementById('subs'), vozBtn = document.getElementById('voz');
+let vozOn = true, cueNext = 0, subsTimer = null, esVoice = null;
+try { vozOn = localStorage.getItem('cocina-voz') !== 'off'; } catch (e) {}
+vozBtn.setAttribute('aria-pressed', String(vozOn));
+if (!synth) { vozBtn.disabled = true; vozBtn.title = 'Este navegador no tiene voz sintetizada; se muestran solo los subtítulos'; vozBtn.setAttribute('aria-pressed','false'); }
+function pickVoice(){
+  if (!synth) return;
+  const vs = synth.getVoices(); if (!vs.length) return;
+  const pref = ['es-CL','es-419','es-US','es-MX','es-AR','es-CO','es-ES'];
+  esVoice = null;
+  for (const tag of pref) { esVoice = vs.find(v => v.lang && v.lang.replace('_','-').toLowerCase() === tag.toLowerCase()); if (esVoice) break; }
+  if (!esVoice) esVoice = vs.find(v => v.lang && v.lang.toLowerCase().startsWith('es')) || null;
+}
+if (synth) { pickVoice(); synth.addEventListener && synth.addEventListener('voiceschanged', pickVoice); }
+function showSubs(txt, secs){
+  clearTimeout(subsTimer);
+  subsEl.textContent = txt; subsEl.classList.add('on');
+  if (secs) subsTimer = setTimeout(() => subsEl.classList.remove('on'), secs*1000);
+}
+function hideSubs(){ clearTimeout(subsTimer); subsEl.classList.remove('on'); }
+function narrate(txt){
+  const secs = Math.max(2.2, txt.split(/\s+/).length/2.6);
+  if (!synth || !vozOn) { showSubs(txt, secs); return; }
+  const ut = new SpeechSynthesisUtterance(txt);
+  ut.lang = esVoice ? esVoice.lang : 'es-CL'; if (esVoice) ut.voice = esVoice;
+  ut.rate = 1.05; ut.pitch = 1;
+  let t0 = 0;
+  ut.onstart = () => { t0 = performance.now(); showSubs(txt, 0); };
+  ut.onend = () => {                     // los subtítulos quedan al menos el tiempo de lectura, aunque la voz termine antes
+    if (!t0 || subsEl.textContent !== txt) return;
+    const left = Math.max(0.6, secs - (performance.now() - t0)/1000);
+    clearTimeout(subsTimer); subsTimer = setTimeout(hideSubs, left*1000);
+  };
+  ut.onerror = () => showSubs(txt, secs);
+  synth.speak(ut);
+}
+function narrationTick(){
+  if (simStart === null) return;
+  while (cueNext < CUES.length && simU >= CUES[cueNext].u) { narrate(CUES[cueNext].txt); cueNext++; }
+}
+function narrationStart(){ cueNext = 0; if (synth) synth.cancel(); hideSubs(); }
+vozBtn.addEventListener('click', () => {
+  vozOn = !vozOn; vozBtn.setAttribute('aria-pressed', String(vozOn));
+  try { localStorage.setItem('cocina-voz', vozOn ? 'on' : 'off'); } catch (e) {}
+  if (!vozOn && synth) synth.cancel();
+});
+
+function updateSimPanel(){
+  narrationTick();
+  const key = simSteps.map(li => (simU >= +li.dataset.a && simU < +li.dataset.b) ? 1 : 0).join('');
+  if (key !== lastStepKey) { simSteps.forEach((li, i) => li.classList.toggle('on', key[i] === '1')); lastStepKey = key; }
+  const txt = simStart === null ? 'Trabajo normal' : simU < 4 ? 'Trabajo normal' : simU < 13.6 ? 'Emergencia en curso' : 'Primeros auxilios';
+  if (simClock.textContent !== txt) simClock.textContent = txt;
+}
+function closeView(){
+  if (!simGrp.visible) { document.getElementById('ly-sim').checked = true; simGrp.visible = true; }
+  const tg = W3(715,420).setY(0.4), ps = W3(630,600).setY(7.4);
+  flyTo(ps, tg);
+  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed','false'));
+  if (simStart !== null) followOn = true;
+}
+// La cámara acompaña el accidente: mueve el foco entre la víctima y el rescatista, respetando el giro y zoom que tenga
+const focus = new THREE.Vector3(), camDelta = new THREE.Vector3();
+function followAccident(dt){
+  if (!followOn || simStart === null || anim) return;
+  focus.copy(victim.outer.position).add(rescuer.outer.position).multiplyScalar(0.5); focus.y = 0.4;
+  const k = 1 - Math.exp(-dt*2.6);
+  camDelta.copy(focus).sub(controls.target).multiplyScalar(k);
+  controls.target.add(camDelta); camera.position.add(camDelta);
+}
+document.getElementById('sim-go').addEventListener('click', closeView);
+accBtn.addEventListener('click', () => {
+  if (simStart !== null) return;
+  simStart = lastPT - 3.6;                 // el fuego parte casi de inmediato
+  narrationStart();
+  accBtn.disabled = true; accTxt.textContent = 'Accidente en curso';
+  closeView(); followOn = true;
+  if (reduced) { updatePeople((simStart + 10.2)*1000); setTimeout(() => { endAccident(); updatePeople(lastPT*1000 + 1); }, 9000); }
+});
+
 const grid = new THREE.GridHelper(16, 16, 0x6c736d, 0x9aa19a);
 grid.position.y = 0.016; grid.material.transparent = true; grid.material.opacity = 0.55; grid.visible = false; scene.add(grid);
 
@@ -917,11 +1230,12 @@ function selectItem(it, fly){
 }
 
 /* ---------- Cámara ---------- */
-let anim = null;
+let anim = null, nowT = 0;
 function aspectFit(){ const a = camera.aspect; return a < 1.15 ? Math.min(1.9, 1.15/a) : 1; }
 function flyTo(pos, target, instant){
+  if (typeof followOn !== 'undefined') followOn = false;
   if (instant || reduced) { camera.position.copy(pos); controls.target.copy(target); controls.update(); anim = null; return; }
-  anim = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:target, start:performance.now(), dur:850};
+  anim = {p0:camera.position.clone(), t0:controls.target.clone(), p1:pos, t1:target, start:nowT || performance.now(), dur:850};
 }
 function flyDir(target, dist){
   const dir = camera.position.clone().sub(controls.target); dir.y = 0;
@@ -960,6 +1274,7 @@ layer('ly-zonas', on => ROOMS.forEach(r => r.mat.color.setHex(on ? ZONES[r.zone]
 ['materia','personal','vajilla','desechos','evac'].forEach(k => layer('ly-' + k, on => FLOWS[k].group.visible = on));
 layer('ly-grid', on => grid.visible = on);
 layer('ly-personas', on => peopleGrp.visible = on);
+layer('ly-sim', on => simGrp.visible = on);
 
 /* ---------- Etiquetas ---------- */
 const labelsEl = document.getElementById('labels');
@@ -1055,15 +1370,19 @@ setView('iso', true);
 selectRoom(roomByN[12], false);
 
 const ease = k => k < 0.5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3)/2;
+let loopPrev = 0;
 function loop(t){
   requestAnimationFrame(loop);
+  const ldt = Math.min(0.1, Math.max(0, (t - loopPrev)/1000)); loopPrev = t; nowT = t;
   if (anim) {
     const k = Math.min(1, (t - anim.start)/anim.dur), e = ease(k);
     camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.t0, anim.t1, e);
     if (k >= 1) anim = null;
   }
+  followAccident(reduced ? 1 : ldt);
   controls.update();
   if (!reduced) { updateDots(t); updatePeople(t); }
+  updateSimPanel();
   if (sel && sel.kind === 'item' && sel.ref.person) itemBox(sel.ref, selBox.box);
   renderer.render(scene, camera);
   updateLabels();
