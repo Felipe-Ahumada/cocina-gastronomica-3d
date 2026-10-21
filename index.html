@@ -40,6 +40,9 @@ body{background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-siz
 .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
 .seg button.danger{display:inline-flex; align-items:center; gap:7px; background:#C8352A; color:#fff; font-weight:600}
 .seg button.danger:hover{background:#A92A20}
+.seg button.danger.alg{background:#7B3FA0}
+.seg button.danger.alg:hover{background:#63318A}
+.seg button.danger.alg:disabled{background:var(--soft); color:var(--muted)}
 .seg button.danger:disabled{background:var(--soft); color:var(--muted); cursor:default}
 .seg button.danger .dot{width:8px; height:8px; border-radius:50%; background:currentColor; flex:none}
 .seg button.danger:disabled .dot{background:#E0930B; animation:blink 1s steps(2,start) infinite}
@@ -137,6 +140,7 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       </div>
       <div class="seg" role="group" aria-label="Simulacro">
         <button type="button" id="accidente" class="danger"><span class="dot"></span><span id="acc-txt">Accidente</span></button>
+        <button type="button" id="alergia" class="danger alg"><span class="dot"></span><span id="alg-txt">Alergia</span></button>
         <button type="button" id="voz" aria-pressed="true" title="Activar o silenciar la voz que relata el accidente">Narración</button>
       </div>
     </div>
@@ -190,6 +194,20 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       </ol>
       <div class="sim-bar"><button type="button" id="sim-go">Ver de cerca</button><span class="mono" id="sim-clock"></span></div>
       <p class="note" style="margin-top:8px">Aprieta Accidente, arriba junto a Vista y Muros, para iniciar el simulacro.</p>
+    </section>
+
+    <section>
+      <h3 class="sec">Simulacro: reacción alérgica</h3>
+      <ol class="sim" id="al-steps">
+        <li data-a="0.6" data-b="3.6">Un comensal presenta ronchas, hinchazón de labios y dificultad para respirar después de comer.</li>
+        <li data-a="1.6" data-b="9.2">El jefe de salón llega de inmediato, no lo deja solo y llama al SAMU (131).</li>
+        <li data-a="9.2" data-b="14.6">Si la persona tiene su autoinyector de adrenalina, se le ayuda a usarlo en la cara externa del muslo.</li>
+        <li data-a="14.6" data-b="31.1">Con dificultad para respirar, se le deja sentado. Si se marea, se acuesta con las piernas en alto. No se le da nada de comer ni beber.</li>
+        <li data-a="16" data-b="24.8">Se aparta el plato y se avisa a la cocina para identificar el alérgeno.</li>
+        <li data-a="24.8" data-b="31.1">Aunque mejore, debe ir a urgencias: la reacción puede volver horas después.</li>
+      </ol>
+      <div class="sim-bar"><button type="button" id="al-go">Ver de cerca</button><span class="mono" id="al-clock"></span></div>
+      <p class="note" style="margin-top:8px">Aprieta Alergia, arriba junto a Accidente, para iniciar el simulacro.</p>
     </section>
 
     <p class="note">Medidas referenciales derivadas del boceto, sin cotas reales. Antes de construir, valida el diseño con un arquitecto y con la SEREMI de Salud.</p>
@@ -748,12 +766,20 @@ const peopleGrp = new THREE.Group(); scene.add(peopleGrp);
 const PEOPLE = [];
 function part(geo, parent, x, y, z){ const m = new THREE.Mesh(geo, PM); m.position.set(x,y,z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; }
 function cylDown(rt, rb, h, seg){ const g = new THREE.CylinderGeometry(rt, rb, h, seg||10); g.translate(0, -h/2, 0); return g; }
-function makePerson(hat){
+function makePerson(hat, seated){
   const root = new THREE.Group(), legs = [], arms = [];
   for (const s of [-1,1]) {
     const hip = new THREE.Object3D(); hip.position.set(s*0.085, 0.9, 0); root.add(hip);
-    part(cylDown(0.066, 0.052, 0.86, 10), hip, 0, 0, 0);
-    part(new THREE.BoxGeometry(0.1, 0.07, 0.24), hip, 0, -0.865, 0.04);
+    if (seated) {                        // muslo y pierna separados para poder sentarse
+      part(cylDown(0.068, 0.058, 0.44, 10), hip, 0, 0, 0);
+      const knee = new THREE.Object3D(); knee.position.y = -0.44; hip.add(knee);
+      part(cylDown(0.056, 0.05, 0.42, 10), knee, 0, 0, 0);
+      part(new THREE.BoxGeometry(0.1, 0.07, 0.24), knee, 0, -0.445, 0.04);
+      hip.knee = knee;
+    } else {
+      part(cylDown(0.066, 0.052, 0.86, 10), hip, 0, 0, 0);
+      part(new THREE.BoxGeometry(0.1, 0.07, 0.24), hip, 0, -0.865, 0.04);
+    }
     legs.push(hip);
   }
   const body = new THREE.Group(); body.position.y = 0.9; root.add(body);
@@ -830,6 +856,41 @@ addPerson({r:12, act:'walk', hat:'toque', carry:'pot', ph:3, path:[[640,340],[63
 addPerson({r:0, act:'walk', hat:null, carry:'tray', ph:1.5, path:[[585,826],[560,850],[500,850],[470,842]], name:'Garzón', desc:'Retira los platos en el pase y los lleva a la mesa. No entra a la cocina.'});
 addPerson({r:0, act:'walk', hat:null, carry:'dirty', ph:4, path:[[770,848],[805,850],[820,822]], name:'Garzón con vajilla sucia', desc:'Devuelve la vajilla sucia por la puerta de lavado, separada de la salida de platos limpios.'});
 
+
+/* ---------- Comensales en el salón (público, en color) ---------- */
+const lerp = (a,b,k) => a + (b - a)*k;
+const DINER_COLORS = [0xC2683F, 0x4F6D8F, 0x7C8B4A, 0x8A5A7A, 0xC9A13B, 0x3F8A86, 0xB0524F];
+const dinerMats = DINER_COLORS.map(c => new THREE.MeshStandardMaterial({color:c, roughness:0.6}));
+const FOOD = [0xC0564A, 0x7DB36A, 0xD7BE84, 0xE7C24A, 0x9C6B3D];
+const TABLES = [[460,900,[0,1,2]],[600,925,[0,1,2,3]],[740,900,[0,1,2]],[530,1000,[2,3]],[680,1000,[0,1,3]]];
+const comensal = {r:0, name:'Comensal', desc:'Público del salón. Nunca pasa a la cocina: recibe los platos desde el pase y su vajilla vuelve por la puerta de lavado.'};
+let dn = 0;
+const DINER_LIST = [];
+TABLES.forEach(([px,pz,seats], ti) => {
+  const [cx,cz] = P(px,pz);
+  seats.forEach(i => {
+    const a = i*Math.PI/2 + Math.PI/4, ca = Math.cos(a), sa = Math.sin(a);
+    const p = makePerson(null, true), mat = dinerMats[(dn*3 + ti) % dinerMats.length];
+    p.root.traverse(m => { if (m.isMesh) m.material = mat; });
+    Object.assign(p, {act:'dine', ph:dn*1.37 + ti*0.5, r:0, hd:0, s:0, talk:(dn % 3)});
+    p.root.position.set(cx + ca*0.66, -0.4, cz + sa*0.66);
+    p.root.rotation.y = Math.atan2(-ca, -sa);
+    const it = Object.assign({group:p.root, person:true}, comensal);
+    p.root.traverse(m => { if (m.isMesh) { m.userData.item = it; pickables.push(m); } });
+    peopleGrp.add(p.root); PEOPLE.push(p);
+    // plato, comida y vaso frente a cada comensal
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.085, 0.02, 20), M.white);
+    plate.position.set(cx + ca*0.27, 0.771, cz + sa*0.27); plate.castShadow = true; scene.add(plate);
+    const food = new THREE.Mesh(new THREE.SphereGeometry(0.055, 12, 8), mc(FOOD[dn % FOOD.length]));
+    food.scale.y = 0.45; food.position.set(plate.position.x, 0.79, plate.position.z); scene.add(food);
+    const b = a + 0.5, glass = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.026, 0.11, 12), mc(0xBFD9E6, {roughness:0.1, metalness:0.1, transparent:true, opacity:0.6}));
+    glass.position.set(cx + Math.cos(b)*0.3, 0.815, cz + Math.sin(b)*0.3); scene.add(glass);
+    Object.assign(p, {ti, seat:i, plate, food, mat}); DINER_LIST.push(p);
+    dn++;
+  });
+});
+
+function seatLegs(p){ p.L.rotation.x = p.R.rotation.x = -Math.PI/2; p.L.knee.rotation.x = p.R.knee.rotation.x = Math.PI/2; p.L.rotation.z = 0.06; p.R.rotation.z = -0.06; }
 function pose(arm, ax, inw, el){ arm.rotation.set(ax, 0, arm.position.x > 0 ? -inw : inw); arm.el.rotation.x = el; }
 const smooth = k => k*k*(3 - 2*k);
 let lastPT = 0;
@@ -840,6 +901,24 @@ function updatePeople(ms){
     p.L.rotation.x = 0; p.R.rotation.x = 0;
     p.body.position.y = 0.9 + 0.006*sn(T*2); p.body.rotation.set(0,0,0); p.head.rotation.set(0,0,0);
     switch (p.sim ? p.sim(p, t, dt) : p.act) {
+      case 'dine': {
+        seatLegs(p);
+        const cyc = T % 9, bite = cyc < 5;
+        if (bite) {                        // come: lleva el tenedor a la boca cada tanto
+          const k = Math.max(0, Math.sin(T*2.3)); const up = k*k;
+          pose(p.aR, lerp(-0.45, -0.75, up), 0.18, lerp(-1.25, -2.35, up));
+          pose(p.aL, -0.45, 0.2, -1.2);
+          p.head.rotation.x = 0.2 - 0.15*up; p.body.rotation.x = 0.08;
+        } else {                           // conversa con la mesa
+          const g = Math.sin(T*3.1);
+          pose(p.aR, -0.6 + 0.2*g, 0.05, -1.5 + 0.25*Math.sin(T*4.3));
+          pose(p.aL, -0.45, 0.2, -1.2);
+          p.head.rotation.y = 0.45*Math.sin(T*0.9 + p.talk); p.head.rotation.x = 0.05*Math.sin(T*2);
+          p.body.rotation.y = 0.08*Math.sin(T*0.9 + p.talk);
+        }
+        p.body.position.y = 0.9 + 0.004*Math.sin(T*2);
+        break;
+      }
       case 'chop':
         pose(p.aR, -0.45, 0.1, -1.0 - 0.32*(0.5 + 0.5*sn(T*9)));
         pose(p.aL, -0.5, 0.25, -0.95);
@@ -907,7 +986,6 @@ updatePeople(0);
 /* ---------- Simulacro: fuego en la ropa ---------- */
 const SIM_C = 30;
 const simGrp = new THREE.Group(); scene.add(simGrp);
-const lerp = (a,b,k) => a + (b - a)*k;
 const clamp01 = k => Math.max(0, Math.min(1, k));
 const ramp = (u,a,b) => smooth(clamp01((u - a)/(b - a)));
 const angLerp = (a,b,k) => { const d = Math.atan2(Math.sin(b - a), Math.cos(b - a)); return a + d*k; };
@@ -980,13 +1058,9 @@ blanket.rotation.order = 'YXZ'; blanket.castShadow = true; blanket.visible = fal
 const B_END = W3(712,395); B_END.y = 0.27;
 const fwd = new THREE.Vector3();
 
-let simU = 0, simStart = null;
-const accBtn = document.getElementById('accidente'), accTxt = document.getElementById('acc-txt');
-let followOn = false;
-function endAccident(){ simStart = null; accBtn.disabled = false; accTxt.textContent = 'Accidente'; followOn = false; setView('iso'); if (typeof narrate === 'function') narrate(END_CUE); }
+let simU = 0, simStart = null, activeSim = null, followOn = false;
 victim.sim = (p, t, dt) => {
-  if (simStart !== null && t - simStart >= SIM_C) endAccident();
-  const u = simStart === null ? 0 : t - simStart; simU = u;
+  const u = activeSim === 'fuego' ? simU : 0;
   p.lay.rotation.x = 0; p.lay.position.y = 0; p.roll.rotation.y = 0;
   let f = 0;
   if (u < 4) { p.outer.position.copy(V0); p.hd = Math.PI; p.outer.rotation.y = p.hd; setFire(0, t); return 'saute'; }
@@ -1024,7 +1098,7 @@ victim.sim = (p, t, dt) => {
 };
 
 rescuer.sim = (p, t, dt) => {
-  const u = simU;
+  const u = activeSim === 'fuego' ? simU : 0;
   if (u < 4.4) { p.outer.position.copy(R0); p.hd = Math.PI; p.outer.rotation.y = p.hd; blanket.visible = false; return 'chop'; }
   if (u < 5.0) {                       // se da cuenta
     p.outer.position.copy(R0); p.outer.rotation.y = p.hd;
@@ -1084,18 +1158,174 @@ rescuer.sim = (p, t, dt) => {
   return null;
 };
 
-const simSteps = Array.from(document.querySelectorAll('#sim-steps li'));
-const simClock = document.getElementById('sim-clock');
-let lastStepKey = '';
+
+/* ---------- Simulacro: reacción alérgica en el salón ---------- */
+const AL_C = 31;
+const alVictim = DINER_LIST.find(p => p.ti === 0 && p.seat === 1);
+const alMates = DINER_LIST.filter(p => p.ti === 0 && p !== alVictim);
+const alMat = alVictim.mat.clone(), alBase = alMat.color.clone(), alFlush = new THREE.Color(0xD9534F);
+alVictim.root.traverse(m => { if (m.isMesh) m.material = alMat; });
+const plateHome = alVictim.plate.position.clone(), foodHome = alVictim.food.position.clone();
+// ronchas en cara y antebrazos
+const hiveMat = new THREE.MeshStandardMaterial({color:0xE0473C, roughness:0.5});
+const hives = [];
+[[0.06,0.1,0.1],[-0.07,0.08,0.09],[0.0,0.0,0.11],[0.09,0.02,0.06],[-0.09,0.03,0.06],[0.03,0.15,0.07]].forEach(([x,y,z]) => {
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), hiveMat); h.position.set(x, 0.06 + y - 0.05, z); h.scale.setScalar(0.01); alVictim.head.add(h); hives.push(h);
+});
+[alVictim.aL, alVictim.aR].forEach(a => [[0.03,-0.08],[-0.03,-0.16],[0.02,-0.22]].forEach(([x,y]) => {
+  const h = new THREE.Mesh(new THREE.SphereGeometry(0.026, 8, 6), hiveMat); h.position.set(x, y, 0.035); h.scale.setScalar(0.01); a.el.add(h); hives.push(h);
+}));
+const headMesh = alVictim.head.children[0];
+// anillo de alerta en el piso
+const alRing = new THREE.Mesh(new THREE.RingGeometry(0.55, 0.68, 40), new THREE.MeshBasicMaterial({color:0x9B4FC4, transparent:true, opacity:0.7, depthWrite:false}));
+alRing.rotation.x = -Math.PI/2; alRing.position.copy(alVictim.root.position).setY(0.02); alRing.visible = false; scene.add(alRing);
+// cartera colgada en la silla y autoinyector
+const chairA = 3*Math.PI/4, [t0x, t0z] = P(460,900);
+const bag = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.08), mc(0x3E3A36,{roughness:0.6}));
+bag.position.set(t0x + Math.cos(chairA)*0.86, 0.52, t0z + Math.sin(chairA)*0.86); bag.rotation.y = -chairA + Math.PI/2; bag.castShadow = true; scene.add(bag);
+const pen = new THREE.Group();
+const penBody = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.15, 10), mc(0xF2C230)); pen.add(penBody);
+const penCap = new THREE.Mesh(new THREE.CylinderGeometry(0.019, 0.019, 0.035, 10), mc(0xE8792B)); penCap.position.y = -0.085; pen.add(penCap);
+pen.visible = false;
+
+function alPerson(o){
+  const p = addPerson(o);
+  p.outer = new THREE.Group(); peopleGrp.remove(p.root); peopleGrp.add(p.outer); p.outer.add(p.root);
+  p.root.position.set(0,0,0); p.hd = 0;
+  return p;
+}
+const maitre = alPerson({r:0, act:'sim', hat:null, ph:0, name:'Jefe de salón',
+  desc:'Atiende el salón. Ante una reacción alérgica no deja sola a la persona, llama al SAMU (131), la ayuda a usar su autoinyector y avisa a la cocina.'});
+maitre.aR.el.add(pen); pen.position.set(0, -0.31, 0.02);
+const M0 = W3(400,842), M_AT = W3(402,915);
+const mPathA = mkPath([[400,842],[398,880],[402,915]]);
+const mPathB = mkPath([[402,915],[392,860],[425,822],[570,818]]);
+const mPathC = mkPath([[570,818],[425,822],[392,860],[402,915]]);
+const PASE_DROP = W3(578,806); PASE_DROP.y = 0.98;
+function mWalk(p, pa, s, run, dt){
+  const r = along(pa, s); p.outer.position.copy(r.pos);
+  p.hd = angLerp(p.hd, r.hd, Math.min(1, dt*9 || 1)); p.outer.rotation.y = p.hd;
+  const per = run ? 1.8 : 1.3, st = Math.sin(2*Math.PI*s/per), amp = run ? 0.65 : 0.45;
+  p.L.rotation.x = amp*st; p.R.rotation.x = -amp*st;
+  p.body.position.y = 0.9 + (run ? 0.035 : 0.02)*Math.abs(Math.cos(2*Math.PI*s/per));
+  if (run) p.body.rotation.x = 0.1;
+  return st;
+}
+const faceVictim = Math.atan2(alVictim.root.position.x - M_AT.x, alVictim.root.position.z - M_AT.z);
+function plateInHand(p){
+  fwd.set(Math.sin(p.hd), 0, Math.cos(p.hd));
+  alVictim.plate.position.copy(p.outer.position).addScaledVector(fwd, 0.42); alVictim.plate.position.y = 1.13;
+  alVictim.food.position.copy(alVictim.plate.position); alVictim.food.position.y += 0.02;
+}
+
+maitre.sim = (p, t, dt) => {
+  const u = activeSim === 'alergia' ? simU : -1, T = t;
+  if (u < 1.2) {                         // atento al salón
+    p.outer.position.copy(M0); p.hd = Math.PI/4; p.outer.rotation.y = p.hd;
+    pose(p.aR, 0.08, 0.05, -0.25); pose(p.aL, 0.08, 0.05, -0.25);
+    p.head.rotation.y = 0.5*Math.sin(T*0.35); pen.visible = false;
+    if (u < 0) { alVictim.plate.position.copy(plateHome); alVictim.food.position.copy(foodHome); alVictim.plate.visible = alVictim.food.visible = true; }
+    return null;
+  }
+  if (u < 1.6) { p.outer.position.copy(M0); p.outer.rotation.y = p.hd; p.head.rotation.y = 0.7*ramp(u, 1.2, 1.4); pose(p.aR, 0, 0.05, -0.3); pose(p.aL, 0, 0.05, -0.3); return null; }
+  if (u < 2.6) { const st = mWalk(p, mPathA, (u - 1.6)*mPathA.len/1.0, true, dt); pose(p.aR, -0.7*st, 0.05, -1.3); pose(p.aL, 0.7*st, 0.05, -1.3); return null; }
+  const atVictim = () => { p.outer.position.copy(M_AT); p.hd = angLerp(p.hd, faceVictim, Math.min(1, dt*7 || 1)); p.outer.rotation.y = p.hd; };
+  if (u < 5.6) { atVictim(); p.body.rotation.x = 0.22; p.head.rotation.x = 0.25; pose(p.aR, -1.0, -0.05, -0.55); pose(p.aL, -0.2, 0.05, -0.3); return null; }   // le habla, mano en el hombro
+  if (u < 9.2) { atVictim(); pose(p.aR, -0.25, 0.55, -2.55*ramp(u, 5.6, 6.1)); pose(p.aL, -0.9, 0.0, -0.5); p.head.rotation.y = 0.25; return null; }   // llama al SAMU
+  if (u < 10.6) {                        // saca el autoinyector de la cartera
+    atVictim(); const k = ramp(u, 9.2, 9.8);
+    p.hd = angLerp(p.hd, faceVictim + 0.9, k); p.outer.rotation.y = p.hd;
+    p.body.rotation.x = 0.7*k; pose(p.aR, -0.5*k, 0.1, -0.2); pose(p.aL, -0.2, 0.05, -0.3);
+    pen.visible = u > 10.1; pen.rotation.set(0,0,0);
+    return null;
+  }
+  if (u < 14.6) {                        // ayuda a inyectar en la cara externa del muslo
+    atVictim(); const k = ramp(u, 10.6, 11.4);
+    p.body.rotation.x = 0.85*k; p.head.rotation.x = 0.3*k;
+    pose(p.aR, lerp(-0.5, -0.35, k), 0.25, lerp(-0.2, -1.1, k)); pose(p.aL, -0.8*k, 0.1, -0.4);
+    pen.visible = true; pen.rotation.set(Math.PI/2*k, 0, 0);
+    return null;
+  }
+  if (u < 16.0) { atVictim(); pen.visible = false; p.body.rotation.x = 0.85*(1 - ramp(u, 14.6, 15.2)); pose(p.aR, -1.0, -0.05, -0.55); pose(p.aL, -0.2, 0.05, -0.3); return null; }
+  if (u < 16.6) {                        // toma el plato
+    atVictim(); const k = ramp(u, 16.0, 16.5);
+    p.body.rotation.x = 0.35*Math.sin(Math.PI*k); pose(p.aR, -0.4, 0, -1.17); pose(p.aL, -0.4, 0, -1.17);
+    if (u > 16.35) plateInHand(p);
+    return null;
+  }
+  if (u < 20.0) { mWalk(p, mPathB, (u - 16.6)*mPathB.len/3.4, false, dt); pose(p.aR, -0.4, 0, -1.17); pose(p.aL, -0.4, 0, -1.17); plateInHand(p); return null; }
+  if (u < 21.2) {                        // entrega el plato en el pase
+    p.outer.position.copy(mPathB.pts[mPathB.pts.length - 1]); p.hd = angLerp(p.hd, Math.PI, Math.min(1, dt*7 || 1)); p.outer.rotation.y = p.hd;
+    const k = ramp(u, 20.0, 20.7);
+    fwd.set(Math.sin(p.hd), 0, Math.cos(p.hd));
+    const from = p.outer.position.clone().addScaledVector(fwd, 0.42).setY(1.13);
+    alVictim.plate.position.lerpVectors(from, PASE_DROP, k); alVictim.food.position.copy(alVictim.plate.position).setY(alVictim.plate.position.y + 0.02);
+    pose(p.aR, lerp(-0.4, -1.1, k), 0, lerp(-1.17, -0.3, k)); pose(p.aL, lerp(-0.4, -1.1, k), 0, lerp(-1.17, -0.3, k));
+    alVictim.plate.visible = alVictim.food.visible = u < 21.0;
+    return null;
+  }
+  if (u < 24.6) { const st = mWalk(p, mPathC, (u - 21.2)*mPathC.len/3.4, false, dt); pose(p.aR, -0.35*st, 0.04, -0.2); pose(p.aL, 0.35*st, 0.04, -0.2); return null; }
+  atVictim(); pose(p.aR, -1.0, -0.05, -0.55); pose(p.aL, -0.15, 0.05, -0.25); p.head.rotation.x = 0.15;   // lo acompaña
+  return null;
+};
+
+alVictim.sim = (p, t, dt) => {
+  const u = activeSim === 'alergia' ? simU : -1;
+  const react = u < 0 ? 0 : ramp(u, 0.6, 2.2)*(1 - ramp(u, 16, 27));
+  hives.forEach((h, i) => h.scale.setScalar(Math.max(0.01, react*(0.8 + 0.3*Math.sin(i*1.9)))));
+  alMat.color.copy(alBase).lerp(alFlush, 0.35*react);
+  headMesh.scale.set(1 + 0.07*react, 1 + 0.04*react, 1 + 0.07*react);
+  alRing.visible = u >= 0.6 && u < AL_C - 0.5;
+  if (alRing.visible) { const k = 0.85 + 0.15*Math.sin(t*5); alRing.scale.set(k, k, 1); alRing.material.opacity = 0.35 + 0.35*react + 0.15*Math.sin(t*5); }
+  if (u < 0.6) return 'dine';
+  seatLegs(p);
+  if (u < 9.2) {                         // se toma el cuello, tose y le cuesta respirar
+    const cough = Math.max(0, Math.sin(u*8.5)) * (u < 4 ? 1 : 0.55);
+    p.body.rotation.x = 0.12 + 0.14*cough; p.head.rotation.x = 0.15*cough - 0.12;
+    p.body.position.y = 0.9 + 0.012*Math.sin(u*6);
+    pose(p.aR, -1.15, 0.55, -2.15); pose(p.aL, u < 4 ? -1.1 : -0.45, u < 4 ? 0.55 : 0.2, u < 4 ? -2.1 : -1.2);
+    return null;
+  }
+  if (u < 14.6) {                        // recibe la adrenalina: se apoya en la mesa
+    p.body.rotation.x = 0.08; p.head.rotation.x = -0.05; p.body.position.y = 0.9 + 0.012*Math.sin(u*5);
+    pose(p.aR, -0.5, 0.25, -1.25); pose(p.aL, -0.5, 0.25, -1.25);
+    return null;
+  }
+  // sentado y respirando más tranquilo
+  p.body.rotation.x = -0.04; p.head.rotation.x = 0.05; p.body.position.y = 0.9 + 0.01*Math.sin(u*3);
+  pose(p.aR, -0.35, 0.3, -1.0); pose(p.aL, -0.35, 0.3, -1.0);
+  return null;
+};
+alMates.forEach(p => {
+  p.sim = (q, t, dt) => {
+    const u = activeSim === 'alergia' ? simU : -1;
+    if (u < 1.2) return 'dine';
+    seatLegs(q);
+    const v = alVictim.root.position, w = q.root.position;
+    let yaw = Math.atan2(v.x - w.x, v.z - w.z) - q.root.rotation.y; yaw = Math.atan2(Math.sin(yaw), Math.cos(yaw));
+    q.head.rotation.y = Math.max(-1.2, Math.min(1.2, yaw))*ramp(u, 1.2, 1.7); q.body.rotation.y = 0.3*q.head.rotation.y;
+    q.head.rotation.x = 0.05;
+    pose(q.aR, -0.45, 0.2, -1.2); pose(q.aL, -0.45, 0.2, -1.2);
+    return null;
+  };
+});
 
 /* ---------- Narración del accidente (voz del navegador + subtítulos) ---------- */
-const CUES = [
+const CUES_FUEGO = [
   {u:4.0,  txt:'Atención: se encendió la ropa de un cocinero.'},
   {u:5.6,  txt:'No corre. Se tira al suelo y rueda, cubriéndose la cara.'},
   {u:8.9,  txt:'Un compañero lo cubre con la manta ignífuga para ahogar el fuego.'},
   {u:12.6, txt:'El fuego se apagó. Lo ayuda a levantarse y lo lleva al lavamanos.'},
   {u:17.2, txt:'La quemadura se enfría con agua corriente fría por veinte minutos, sin hielo ni cremas.'},
   {u:22.4, txt:'Su compañero llama al SAMU, al ciento treinta y uno, y avisa al supervisor.'}
+];
+const CUES_ALERGIA = [
+  {u:0.7,  txt:'Atención: un comensal tiene una reacción alérgica. Le cuesta respirar.'},
+  {u:4.8,  txt:'El jefe de salón no lo deja solo y llama al SAMU, al ciento treinta y uno.'},
+  {u:10.4, txt:'Con su autoinyector de adrenalina, lo ayuda a inyectarse en el muslo.'},
+  {u:14.8, txt:'Lo deja sentado para que respire mejor. No se le da nada de comer ni beber.'},
+  {u:20.2, txt:'El plato va a la cocina para identificar el alérgeno.'},
+  {u:24.8, txt:'Aunque mejore, debe ir a urgencias: la reacción puede volver.'}
 ];
 const END_CUE = 'Simulacro terminado. Se vuelve al trabajo normal.';
 const synth = window.speechSynthesis || null;
@@ -1136,8 +1366,9 @@ function narrate(txt){
   synth.speak(ut);
 }
 function narrationTick(){
-  if (simStart === null) return;
-  while (cueNext < CUES.length && simU >= CUES[cueNext].u) { narrate(CUES[cueNext].txt); cueNext++; }
+  if (!activeSim) return;
+  const cues = SCEN[activeSim].cues;
+  while (cueNext < cues.length && simU >= cues[cueNext].u) { narrate(cues[cueNext].txt); cueNext++; }
 }
 function narrationStart(){ cueNext = 0; if (synth) synth.cancel(); hideSubs(); }
 vozBtn.addEventListener('click', () => {
@@ -1146,38 +1377,70 @@ vozBtn.addEventListener('click', () => {
   if (!vozOn && synth) synth.cancel();
 });
 
+const SCEN = {
+  fuego: {dur:SIM_C, offset:3.6, cues:CUES_FUEGO, btn:document.getElementById('accidente'), txt:document.getElementById('acc-txt'), label:'Accidente', running:'Accidente en curso',
+    steps:Array.from(document.querySelectorAll('#sim-steps li')), clock:document.getElementById('sim-clock'),
+    status:u => u < 4 ? 'Trabajo normal' : u < 13.6 ? 'Emergencia en curso' : 'Primeros auxilios',
+    view:() => [W3(630,600).setY(7.4), W3(715,420).setY(0.4)], a:() => victim.outer.position, b:() => rescuer.outer.position,
+    layer:() => { if (!simGrp.visible) { document.getElementById('ly-sim').checked = true; simGrp.visible = true; } }},
+  alergia: {dur:AL_C, offset:0, cues:CUES_ALERGIA, btn:document.getElementById('alergia'), txt:document.getElementById('alg-txt'), label:'Alergia', running:'Alergia en curso',
+    steps:Array.from(document.querySelectorAll('#al-steps li')), clock:document.getElementById('al-clock'),
+    status:u => u < 0.6 ? 'Servicio normal' : u < 14.6 ? 'Emergencia en curso' : 'Primeros auxilios',
+    view:() => [W3(575,1095).setY(6.2), W3(440,885).setY(0.4)], a:() => alVictim.root.position, b:() => maitre.outer.position,
+    layer:() => { if (!peopleGrp.visible) { document.getElementById('ly-personas').checked = true; peopleGrp.visible = true; } }}
+};
+let clockT = 0;
+function simClockTick(t){
+  clockT = t;
+  if (!activeSim) { simU = 0; return; }
+  simU = t - simStart;
+  if (simU >= SCEN[activeSim].dur) endSim();
+}
+function endSim(){
+  activeSim = null; simStart = null; simU = 0; followOn = false;
+  Object.values(SCEN).forEach(sc => { sc.btn.disabled = false; sc.txt.textContent = sc.label; });
+  setView('iso'); narrate(END_CUE); loop.once = false;
+}
+function startSim(k){
+  if (activeSim) return;
+  const sc = SCEN[k];
+  activeSim = k; simStart = clockT - sc.offset; simU = sc.offset;
+  narrationStart();
+  Object.values(SCEN).forEach(o => o.btn.disabled = true); sc.txt.textContent = sc.running;
+  closeView(k);
+}
+const stepKeys = {};
 function updateSimPanel(){
   narrationTick();
-  const key = simSteps.map(li => (simU >= +li.dataset.a && simU < +li.dataset.b) ? 1 : 0).join('');
-  if (key !== lastStepKey) { simSteps.forEach((li, i) => li.classList.toggle('on', key[i] === '1')); lastStepKey = key; }
-  const txt = simStart === null ? 'Trabajo normal' : simU < 4 ? 'Trabajo normal' : simU < 13.6 ? 'Emergencia en curso' : 'Primeros auxilios';
-  if (simClock.textContent !== txt) simClock.textContent = txt;
+  for (const k in SCEN) {
+    const sc = SCEN[k], on = activeSim === k, uu = on ? simU : -99;
+    const key = sc.steps.map(li => (uu >= +li.dataset.a && uu < +li.dataset.b) ? 1 : 0).join('');
+    if (key !== stepKeys[k]) { sc.steps.forEach((li, i) => li.classList.toggle('on', key[i] === '1')); stepKeys[k] = key; }
+    const txt = on ? sc.status(simU) : (k === 'alergia' ? 'Servicio normal' : 'Trabajo normal');
+    if (sc.clock.textContent !== txt) sc.clock.textContent = txt;
+  }
 }
-function closeView(){
-  if (!simGrp.visible) { document.getElementById('ly-sim').checked = true; simGrp.visible = true; }
-  const tg = W3(715,420).setY(0.4), ps = W3(630,600).setY(7.4);
+function closeView(k){
+  const sc = SCEN[k]; sc.layer();
+  const [ps, tg] = sc.view();
   flyTo(ps, tg);
   document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed','false'));
-  if (simStart !== null) followOn = true;
+  if (activeSim === k) followOn = true;
 }
-// La cámara acompaña el accidente: mueve el foco entre la víctima y el rescatista, respetando el giro y zoom que tenga
+// La cámara acompaña la emergencia: mueve el foco entre la persona afectada y quien la ayuda, respetando el giro y zoom que tenga
 const focus = new THREE.Vector3(), camDelta = new THREE.Vector3();
 function followAccident(dt){
-  if (!followOn || simStart === null || anim) return;
-  focus.copy(victim.outer.position).add(rescuer.outer.position).multiplyScalar(0.5); focus.y = 0.4;
+  if (!followOn || !activeSim || anim) return;
+  const sc = SCEN[activeSim];
+  focus.copy(sc.a()).add(sc.b()).multiplyScalar(0.5); focus.y = 0.4;
   const k = 1 - Math.exp(-dt*2.6);
   camDelta.copy(focus).sub(controls.target).multiplyScalar(k);
   controls.target.add(camDelta); camera.position.add(camDelta);
 }
-document.getElementById('sim-go').addEventListener('click', closeView);
-accBtn.addEventListener('click', () => {
-  if (simStart !== null) return;
-  simStart = lastPT - 3.6;                 // el fuego parte casi de inmediato
-  narrationStart();
-  accBtn.disabled = true; accTxt.textContent = 'Accidente en curso';
-  closeView(); followOn = true;
-  if (reduced) { updatePeople((simStart + 10.2)*1000); setTimeout(() => { endAccident(); updatePeople(lastPT*1000 + 1); }, 9000); }
-});
+document.getElementById('sim-go').addEventListener('click', () => closeView('fuego'));
+document.getElementById('al-go').addEventListener('click', () => closeView('alergia'));
+SCEN.fuego.btn.addEventListener('click', () => startSim('fuego'));
+SCEN.alergia.btn.addEventListener('click', () => startSim('alergia'));
 
 const grid = new THREE.GridHelper(16, 16, 0x6c736d, 0x9aa19a);
 grid.position.y = 0.016; grid.material.transparent = true; grid.material.opacity = 0.55; grid.visible = false; scene.add(grid);
@@ -1314,7 +1577,7 @@ ROOMS.forEach(r => {
 });
 document.getElementById('zonelegend').innerHTML = ['sucia','pre','limpia','alm','control','personal','circ'].map(k => zoneChip(ZONES[k])).join('');
 const nIn = ITEMS.filter(i => i.r > 0).length;
-document.getElementById('stats').textContent = `${nIn} muebles, equipos y elementos de seguridad en ${ROOMS.length} recintos · ${PEOPLE.length} personas trabajando`;
+document.getElementById('stats').textContent = `${nIn} muebles, equipos y elementos de seguridad en ${ROOMS.length} recintos · ${PEOPLE.length - dn} personas trabajando · ${dn} comensales`;
 
 /* ---------- Puntero ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -1379,9 +1642,11 @@ function loop(t){
     camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.t0, anim.t1, e);
     if (k >= 1) anim = null;
   }
+  simClockTick(t/1000);
   followAccident(reduced ? 1 : ldt);
   controls.update();
-  if (!reduced) { updateDots(t); updatePeople(t); }
+  if (!reduced) updateDots(t);
+  if (!reduced || activeSim || !loop.once) { loop.once = true; updatePeople(t); }
   updateSimPanel();
   if (sel && sel.kind === 'item' && sel.ref.person) itemBox(sel.ref, selBox.box);
   renderer.render(scene, camera);
