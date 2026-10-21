@@ -43,6 +43,12 @@ body{background:var(--bg); color:var(--fg); font-family:var(--font-ui); font-siz
 .seg button.danger.alg{background:#7B3FA0}
 .seg button.danger.alg:hover{background:#63318A}
 .seg button.danger.alg:disabled{background:var(--soft); color:var(--muted)}
+.seg button.danger.qk{background:#8A5A2B}
+.seg button.danger.qk:hover{background:#6F4820}
+.seg button.danger.qk:disabled{background:var(--soft); color:var(--muted)}
+.seg button.danger.ct{background:#2F6FBF}
+.seg button.danger.ct:hover{background:#245A9E}
+.seg button.danger.ct:disabled{background:var(--soft); color:var(--muted)}
 .seg button.danger:disabled{background:var(--soft); color:var(--muted); cursor:default}
 .seg button.danger .dot{width:8px; height:8px; border-radius:50%; background:currentColor; flex:none}
 .seg button.danger:disabled .dot{background:#E0930B; animation:blink 1s steps(2,start) infinite}
@@ -141,6 +147,8 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       <div class="seg" role="group" aria-label="Simulacro">
         <button type="button" id="accidente" class="danger"><span class="dot"></span><span id="acc-txt">Accidente</span></button>
         <button type="button" id="alergia" class="danger alg"><span class="dot"></span><span id="alg-txt">Alergia</span></button>
+        <button type="button" id="sismo" class="danger qk"><span class="dot"></span><span id="qk-txt">Terremoto</span></button>
+        <button type="button" id="corte" class="danger ct"><span class="dot"></span><span id="ct-txt">Corte</span></button>
         <button type="button" id="voz" aria-pressed="true" title="Activar o silenciar la voz que relata el accidente">Narración</button>
       </div>
     </div>
@@ -208,6 +216,34 @@ button:focus-visible, input:focus-visible{outline:2px solid var(--accent); outli
       </ol>
       <div class="sim-bar"><button type="button" id="al-go">Ver de cerca</button><span class="mono" id="al-clock"></span></div>
       <p class="note" style="margin-top:8px">Aprieta Alergia, arriba junto a Accidente, para iniciar el simulacro.</p>
+    </section>
+
+    <section>
+      <h3 class="sec">Simulacro: terremoto</h3>
+      <ol class="sim" id="qk-steps">
+        <li data-a="1" data-b="13">Durante el movimiento: agáchate, cúbrete y afírmate, lejos de cocinas, aceite caliente, estantes y vidrios.</li>
+        <li data-a="6.4" data-b="13">No salir corriendo mientras se mueve: lo más peligroso es lo que cae.</li>
+        <li data-a="13" data-b="17">Al terminar, un responsable corta el gas en la llave general y se apagan los equipos.</li>
+        <li data-a="16.5" data-b="37.1">Evacuar caminando, sin correr, por las rutas señalizadas hasta la zona de seguridad.</li>
+        <li data-a="21.4" data-b="37.1">Los garzones guían a los comensales. En la zona de seguridad se cuenta a todos y nadie vuelve a entrar hasta revisar el local.</li>
+        <li data-a="32" data-b="37.1">En la costa, si costó mantenerse en pie, evacuar hacia zonas altas por posible tsunami, siguiendo a SENAPRED.</li>
+      </ol>
+      <div class="sim-bar"><button type="button" id="qk-go">Ver de cerca</button><span class="mono" id="qk-clock"></span></div>
+      <p class="note" style="margin-top:8px">Aprieta Terremoto, arriba junto a Alergia, para iniciar el simulacro.</p>
+    </section>
+
+    <section>
+      <h3 class="sec">Simulacro: corte con cuchillo</h3>
+      <ol class="sim" id="ct-steps">
+        <li data-a="0.4" data-b="2.6">Un cocinero se corta el antebrazo. Deja el cuchillo y se aleja del mesón.</li>
+        <li data-a="1.6" data-b="6.6">Un compañero trae el botiquín y se pone guantes antes de tocar la herida.</li>
+        <li data-a="6.6" data-b="17.5">Presión directa con gasa limpia y el brazo en alto, sobre el nivel del corazón. Si la gasa se empapa, se agrega otra encima sin retirar la primera.</li>
+        <li data-a="17.5" data-b="21.5">Cuando deja de sangrar, se cubre con un vendaje. Si sangra a chorros o no para en 10 minutos, se llama al SAMU (131).</li>
+        <li data-a="20.6" data-b="27">Se bota el alimento contaminado y se lava y desinfecta el mesón y el cuchillo.</li>
+        <li data-a="26.5" data-b="33.1">Quien ayudó se saca los guantes y se lava las manos. El herido vuelve a trabajar solo con la herida cubierta con parche impermeable azul y guante.</li>
+      </ol>
+      <div class="sim-bar"><button type="button" id="ct-go">Ver de cerca</button><span class="mono" id="ct-clock"></span></div>
+      <p class="note" style="margin-top:8px">Aprieta Corte, arriba junto a Terremoto, para iniciar el simulacro.</p>
     </section>
 
     <p class="note">Medidas referenciales derivadas del boceto, sin cotas reales. Antes de construir, valida el diseño con un arquitecto y con la SEREMI de Salud.</p>
@@ -443,6 +479,7 @@ function shelfItems(w,d,ys,kind){
   }
 }
 
+let gasLever = null;
 const B = {
   mesa(o){ const w=o.w||1.8, d=o.d||0.7, h=0.9;
     bx(w,0.04,d,M.inox,0,h-0.02,0); bx(w,0.1,0.02,M.inox,0,h+0.05,-d/2+0.01); legs(w,d,h-0.04); bx(w-0.1,0.025,d-0.1,M.inox,0,0.22,0);
@@ -573,6 +610,18 @@ const B = {
     bx(0.02,0.25,0.02,M.black,0.09,0.95,0.03); bx(0.12,0.04,0.06,M.inoxD,0,0.75,-0.07);
     wm(bx(0.2,0.28,0.012,M.red,0,1.5,-0.09));
   },
+  llaveGas(){
+    cy(0.025,0.025,0.85,mc(0xE2B428,{roughness:0.5}),0,0.55,0.03,10);
+    bx(0.09,0.09,0.07,mc(0xB8BEC3,{metalness:0.5,roughness:0.35}),0,0.95,0.05);
+    const g = new THREE.BoxGeometry(0.035,0.2,0.025); g.translate(0,0.08,0);
+    gasLever = new THREE.Mesh(g, M.red); gasLever.position.set(0,0.95,0.1); gasLever.castShadow = true; G.add(gasLever);
+    bx(0.22,0.1,0.01,mc(0xE2B428),0,1.08,0.02);
+  },
+  botiquin(){
+    bx(0.42,0.32,0.13,mc(0x1E8E4A,{roughness:0.5}),0,0.9,0);
+    bx(0.16,0.05,0.012,M.white,0,0.9,0.07); bx(0.05,0.16,0.012,M.white,0,0.9,0.07);
+    bx(0.12,0.025,0.03,M.inoxD,0,1.075,0.03);
+  },
   manta(){ bx(0.34,0.4,0.11,M.red,0,0.92,0); bx(0.3,0.05,0.115,M.white,0,1.0,0); bx(0.06,0.06,0.02,M.white,0,1.1,0.06); bx(0.04,0.08,0.03,M.white,-0.08,0.7,0.06); bx(0.04,0.08,0.03,M.white,0.08,0.7,0.06); },
   luz(){ bx(0.34,0.1,0.08,M.white,0,2.38,0); bx(0.28,0.04,0.012,M.yellow,0,2.36,0.043); },
   salida(){ bx(0.42,0.17,0.035,M.green,0,2.28,0); bx(0.1,0.1,0.006,M.white,-0.12,2.28,0.02); bx(0.18,0.03,0.006,M.white,0.07,2.28,0.02); },
@@ -677,6 +726,8 @@ F(12,'salida',856,380,EA,{},'Señal de salida de emergencia','Verde, fotoluminis
 F(12,'sumidero',470,345,N0,{},'Sumidero con rejilla',T.sumidero);
 F(12,'sumidero',700,345,N0,{},'Sumidero con rejilla',T.sumidero);
 F(12,'sumidero',600,490,N0,{},'Sumidero con rejilla',T.sumidero);
+F(12,'llaveGas',262,370,WE,{},'Llave de corte de gas','Corta el gas de toda la cocina. Señalizada, a la mano y sin obstáculos. Después de un sismo se cierra antes de evacuar.');
+F(13,'botiquin',150,524,N0,{},'Botiquín de primeros auxilios','Gasas, vendas, guantes desechables y parches impermeables azules. Señalizado y a la mano en la zona de producción, donde más se usa cuchillo.');
 F(12,'manta',853,500,EA,{},'Manta ignífuga','Para ahogar fuego en la ropa de una persona o en un recipiente pequeño. Se tira de las cintas y se cubre desde la cabeza hacia los pies.');
 // 13 Producción
 F(13,'mesa',24,614,WE,{w:1.8,d:0.7,board:'boardRed'},'Mesón de carnes','Solo carnes, aves y pescados crudos. Tabla de corte roja.');
@@ -893,13 +944,14 @@ TABLES.forEach(([px,pz,seats], ti) => {
 function seatLegs(p){ p.L.rotation.x = p.R.rotation.x = -Math.PI/2; p.L.knee.rotation.x = p.R.knee.rotation.x = Math.PI/2; p.L.rotation.z = 0.06; p.R.rotation.z = -0.06; }
 function pose(arm, ax, inw, el){ arm.rotation.set(ax, 0, arm.position.x > 0 ? -inw : inw); arm.el.rotation.x = el; }
 const smooth = k => k*k*(3 - 2*k);
-let lastPT = 0;
+let lastPT = 0, quakeHook = null;
 function updatePeople(ms){
   const t = ms/1000, dt = Math.min(0.1, Math.max(0, t - lastPT)); lastPT = t;
   for (const p of PEOPLE) {
     const T = t + p.ph, sn = Math.sin;
     p.L.rotation.x = 0; p.R.rotation.x = 0;
     p.body.position.y = 0.9 + 0.006*sn(T*2); p.body.rotation.set(0,0,0); p.head.rotation.set(0,0,0);
+    if (quakeHook && quakeHook(p, t, dt)) continue;
     switch (p.sim ? p.sim(p, t, dt) : p.act) {
       case 'dine': {
         seatLegs(p);
@@ -1327,6 +1379,24 @@ const CUES_ALERGIA = [
   {u:20.2, txt:'El plato va a la cocina para identificar el alérgeno.'},
   {u:24.8, txt:'Aunque mejore, debe ir a urgencias: la reacción puede volver.'}
 ];
+const CUES_SISMO = [
+  {u:1.2,  txt:'¡Sismo! Agáchate, cúbrete y afírmate, lejos de cocinas, aceite caliente y estantes.'},
+  {u:6.4,  txt:'No se sale corriendo mientras se mueve: lo más peligroso es lo que cae.'},
+  {u:13.1, txt:'Terminó el movimiento. Un cocinero corta el gas en la llave general.'},
+  {u:17.4, txt:'Todos evacúan caminando, sin correr, por las rutas verdes.'},
+  {u:21.4, txt:'Los garzones guían a los comensales hacia la zona de seguridad exterior.'},
+  {u:25.6, txt:'En la zona de seguridad se cuenta a todos y nadie vuelve a entrar hasta revisar el local.'},
+  {u:32.0, txt:'En la costa, si costó mantenerse en pie, se evacúa hacia zonas altas.'}
+];
+const CUES_CORTE = [
+  {u:0.5,  txt:'Atención: un cocinero se cortó el brazo con el cuchillo.'},
+  {u:4.2,  txt:'Un compañero trae el botiquín y se pone guantes antes de ayudar.'},
+  {u:8.3,  txt:'Presiona la herida con una gasa limpia y le levanta el brazo.'},
+  {u:12.5, txt:'Si la gasa se empapa, se pone otra encima, sin sacar la primera.'},
+  {u:17.4, txt:'Cuando deja de sangrar, se venda. Si no para, se llama al SAMU.'},
+  {u:21.8, txt:'Se bota el alimento contaminado y se desinfecta el mesón.'},
+  {u:26.6, txt:'Al final se lava las manos. El herido vuelve solo con parche impermeable y guante.'}
+];
 const END_CUE = 'Simulacro terminado. Se vuelve al trabajo normal.';
 const synth = window.speechSynthesis || null;
 const subsEl = document.getElementById('subs'), vozBtn = document.getElementById('voz');
@@ -1377,6 +1447,301 @@ vozBtn.addEventListener('click', () => {
   if (!vozOn && synth) synth.cancel();
 });
 
+
+/* ---------- Simulacro: terremoto ---------- */
+const QK_C = 37;
+const ZONES_S = {
+  east:  {c:W3(1030,380), row:new THREE.Vector3(1,0,0),  col:new THREE.Vector3(0,0,1), n:0},
+  north: {c:W3(60,-145),  row:new THREE.Vector3(0,0,-1), col:new THREE.Vector3(1,0,0), n:0},
+  south: {c:W3(620,1135), row:new THREE.Vector3(0,0,1),  col:new THREE.Vector3(1,0,0), n:0}
+};
+const zsGrp = new THREE.Group(); scene.add(zsGrp);
+const zsMat = new THREE.MeshBasicMaterial({color:0x1E9E4F, transparent:true, opacity:0.22, depthWrite:false});
+const zsLine = new THREE.LineBasicMaterial({color:0x1E9E4F});
+Object.values(ZONES_S).forEach(z => {
+  const w = 4.2, d = 2.6, horiz = Math.abs(z.row.x) > 0.5;
+  const g = new THREE.PlaneGeometry(horiz ? d : w, horiz ? w : d);
+  const m = new THREE.Mesh(g, zsMat); m.rotation.x = -Math.PI/2;
+  m.position.copy(z.c).addScaledVector(z.row, 0.9); m.position.y = 0.012; zsGrp.add(m);
+  const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), zsLine); e.rotation.x = -Math.PI/2; e.position.copy(m.position); zsGrp.add(e);
+});
+function zoneSlot(key){
+  const z = ZONES_S[key], n = z.n++, cols = 5;
+  return z.c.clone().addScaledVector(z.col, ((n % cols) - 2)*0.75).addScaledVector(z.row, Math.floor(n/cols)*0.75);
+}
+const toPx = v => [(v.x + W/2)/S, (v.z + D/2)/S];
+const EVAC = FLOWS.evac.paths;
+function evacRoute(startW, salon){
+  const [sx, sz] = toPx(startW);
+  if (salon) return {pts:[[sx,sz],[sx, 1060]], zone:'south'};
+  let best = null;
+  EVAC.forEach((path, j) => { for (let i=1;i<path.length;i++) {
+    const [ax,az] = path[i-1], [bx2,bz] = path[i], dx = bx2 - ax, dz = bz - az, L2 = dx*dx + dz*dz;
+    const k = Math.max(0, Math.min(1, ((sx-ax)*dx + (sz-az)*dz)/L2)), px = ax + dx*k, pz = az + dz*k, d2 = (px-sx)**2 + (pz-sz)**2;
+    if (!best || d2 < best.d2) best = {d2, j, i, p:[px,pz]};
+  }});
+  let pts = [[sx,sz], best.p].concat(EVAC[best.j].slice(best.i));
+  if (best.j === 4) pts = pts.concat([[790,352],[860,380],[970,380]]);
+  const last = pts[pts.length-1];
+  if (last[1] < 0) return {pts, zone:'north'};
+  if (last[0] > 900) return {pts, zone:'east'};
+  pts.push([last[0], 1060]); return {pts, zone:'south'};
+}
+// objetos que se caen de los estantes
+let qseed = 7; const qr = () => (qseed = (qseed*16807) % 2147483647, (qseed - 1)/2147483646);
+const fallers = [];
+ITEMS.filter(it => it.type === 'estanteria' && [4,7,9,10,16].includes(it.r)).forEach(it => {
+  const cand = it.group.children.filter(m => m.isMesh && m.position.y > 1.0 && (m.geometry.type === 'CylinderGeometry' || (m.geometry.parameters && m.geometry.parameters.width < 0.45)));
+  cand.forEach(m => { if (qr() < 0.45) {
+    const h = m.geometry.parameters.height || 0.2;
+    fallers.push({m, p0:m.position.clone(), r0:m.rotation.clone(), y1:h/2 + 0.005, dz:0.42 + qr()*0.35, dx:(qr()-0.5)*0.3, ts:2.2 + qr()*8, rx:(qr()-0.5)*2.4, rz:(qr()-0.5)*1.6});
+  }});
+});
+let gasMan = null;
+const GAS_SPOT = W3(296,370);
+function quakeIntensity(u){ return ramp(u, 1.0, 2.0)*(1 - ramp(u, 11.5, 13.0)); }
+function legsStand(p){ if (p.L.knee) { p.L.knee.rotation.x = p.R.knee.rotation.x = 0; p.L.rotation.z = p.R.rotation.z = 0; } }
+function crouchPose(p, k, diner){
+  if (diner) {
+    p.L.rotation.x = p.R.rotation.x = lerp(p.q.sit ? -Math.PI/2 : 0, -2.2, k);
+    p.L.knee.rotation.x = p.R.knee.rotation.x = lerp(p.q.sit ? Math.PI/2 : 0, 2.4, k);
+    p.q.node.position.y = lerp(p.q.sit ? -0.4 : 0, -0.7, k) + p.q.baseY;
+    p.body.rotation.x = 0.55*k;
+  } else {
+    p.L.rotation.x = p.R.rotation.x = 1.3*k; legsStand(p);
+    p.q.node.position.y = -0.6*k + p.q.baseY;
+    p.body.rotation.x = 0.75*k;
+  }
+  p.head.rotation.x = 0.5*k;
+  pose(p.aR, -2.6*k, 0.45*k, -1.7*k); pose(p.aL, -2.6*k, 0.45*k, -1.7*k);
+}
+function quakePlan(p){
+  const node = p.outer || p.root, start = node.position.clone(), hd0 = node.rotation.y;
+  const diner = p.act === 'dine', salon = p.r === 0;
+  const fx = Math.sin(hd0), fz = Math.cos(hd0);
+  const back = ['stir','saute','chop','wash','plate','hands','shelf'].includes(p.act) || p.sim ? 0.45 : 0;
+  const spot = start.clone(); spot.x -= fx*back; spot.z -= fz*back;
+  if (diner) { spot.x -= fx*0.25; spot.z -= fz*0.25; }
+  const gas = p.name === 'Cocinero de línea';
+  const from = gas ? GAS_SPOT : spot;
+  const r = evacRoute(from, salon);
+  const lat = (qr() - 0.5)*0.5;
+  const pts = r.pts.map(([x,z], i) => { const v = W3(x,z); if (i > 0) { v.x += lat; v.z += lat*0.6; } return v; });
+  pts[0] = from.clone().setY(0);
+  pts.push(zoneSlot(r.zone));
+  const pa = {pts, cum:[0]}; for (let i=1;i<pts.length;i++) pa.cum.push(pa.cum[i-1] + pts[i].distanceTo(pts[i-1])); pa.len = pa.cum[pa.cum.length-1];
+  return {node, start, hd0, spot, diner, sit:diner, gas, pa, baseY:diner ? 0 : start.y, t0:1.05 + qr()*0.5, te:16.6 + (gas ? 0.4 : qr()*1.6), hd:hd0,
+    gasPath: gas ? mkPath([toPx(spot), [296,370]]) : null};
+}
+function walkStride(p, s, diner){
+  const st = Math.sin(2*Math.PI*s/1.3);
+  p.L.rotation.x = 0.45*st; p.R.rotation.x = -0.45*st;
+  if (diner) { p.L.knee.rotation.x = 0.35*Math.max(0, -st); p.R.knee.rotation.x = 0.35*Math.max(0, st); p.L.rotation.z = p.R.rotation.z = 0; }
+  p.body.position.y = 0.9 + 0.02*Math.abs(Math.cos(2*Math.PI*s/1.3));
+  pose(p.aR, -0.35*st, 0.04, -0.2); pose(p.aL, 0.35*st, 0.04, -0.2);
+}
+quakeHook = (p, t, dt) => {
+  if (activeSim !== 'sismo' || simU < 1.0) return false;
+  if (!p.q) p.q = quakePlan(p);
+  const q = p.q, u = simU, node = q.node;
+  const turn = target => { q.hd = angLerp(q.hd, target, Math.min(1, dt*8 || 1)); node.rotation.y = q.hd; };
+  if (u < 13.0) {                        // agáchate, cúbrete y afírmate
+    const k = ramp(u, q.t0, q.t0 + 0.7);
+    node.position.lerpVectors(q.start, q.spot, k); node.rotation.y = q.hd0;
+    crouchPose(p, k, q.diner);
+    p.body.position.y = 0.9 + 0.015*Math.sin(t*23 + p.ph)*quakeIntensity(u);
+    return true;
+  }
+  if (q.gas && u < q.te) {                // corta el gas
+    const k = 1 - ramp(u, 13.0, 13.6); crouchPose(p, k, false);
+    if (u < 13.6) { node.position.copy(q.spot).setY(q.baseY - 0.6*k); return true; }
+    if (u < 14.8) { node.position.y = q.baseY; const r = along(q.gasPath, (u - 13.6)*q.gasPath.len/1.2); node.position.x = r.pos.x; node.position.z = r.pos.z; turn(r.hd); walkStride(p, (u - 13.6)*1.2, false); return true; }
+    node.position.copy(GAS_SPOT).setY(q.baseY); turn(-Math.PI/2);
+    const g = ramp(u, 15.1, 15.9); if (gasLever) gasLever.rotation.z = -Math.PI/2*g;
+    pose(p.aR, -1.45, 0.05, -0.5 + 0.2*g); pose(p.aL, -0.2, 0.05, -0.3);
+    return true;
+  }
+  if (u < q.te) {                         // se levanta y espera
+    const k = 1 - ramp(u, 13.0, 13.8);
+    if (q.diner) { q.sit = false; crouchPose(p, k, true); if (k < 0.01) { legsStand(p); node.position.y = q.baseY; } }
+    else crouchPose(p, k, false);
+    node.position.x = q.spot.x; node.position.z = q.spot.z;
+    p.head.rotation.y = 0.3*Math.sin(t*0.8 + p.ph)*(1 - k);
+    return true;
+  }
+  // evacuación caminando
+  if (q.diner) { q.sit = false; legsStand(p); }
+  const s = (u - q.te)*1.35;
+  if (s < q.pa.len) {
+    const r = along(q.pa, s); node.position.set(r.pos.x, q.baseY, r.pos.z); turn(r.hd);
+    walkStride(p, s, q.diner);
+  } else {
+    const end = q.pa.pts[q.pa.pts.length - 1]; node.position.set(end.x, q.baseY, end.z);
+    turn(Math.atan2(-end.x, -end.z + 0.8));
+    if (q.diner) legsStand(p);
+    pose(p.aR, 0.05, 0.05, -0.2); pose(p.aL, 0.05, 0.05, -0.2);
+  }
+  return true;
+};
+function quakeStart(){
+  Object.values(ZONES_S).forEach(z => z.n = 0); qseed = 7;
+  PEOPLE.forEach(p => { delete p.q; });
+  const ev = document.getElementById('ly-evac'); if (!ev.checked) { ev.checked = true; FLOWS.evac.group.visible = true; }
+  if (!peopleGrp.visible) { document.getElementById('ly-personas').checked = true; peopleGrp.visible = true; }
+}
+function quakeEnd(){
+  PEOPLE.forEach(p => {
+    if (!p.q) return;
+    p.q.node.position.copy(p.q.start); p.q.node.rotation.y = p.q.hd0;
+    if (p.L.knee && p.act === 'dine') { p.L.rotation.z = 0.06; p.R.rotation.z = -0.06; }
+    delete p.q;
+  });
+  fallers.forEach(f => { f.m.position.copy(f.p0); f.m.rotation.copy(f.r0); });
+  if (gasLever) gasLever.rotation.z = 0;
+  scene.position.set(0,0,0); sun.intensity = 0.72;
+}
+function quakeWorld(t){
+  if (activeSim !== 'sismo') return;
+  const u = simU, I = quakeIntensity(u);
+  scene.position.set((Math.sin(t*31) + Math.sin(t*17.3))*0.05*I, Math.sin(t*41)*0.015*I, (Math.sin(t*27.7) + Math.cos(t*13.1))*0.05*I);
+  sun.intensity = 0.72*(1 - 0.35*I*(Math.sin(t*9.7) > 0.6 ? 1 : 0));
+  fallers.forEach(f => {
+    if (u < f.ts) { f.m.position.copy(f.p0); f.m.rotation.set(f.r0.x, f.r0.y, f.r0.z + 0.08*I*Math.sin(t*25 + f.ts)); return; }
+    const k = Math.min(1, (u - f.ts)/0.5), e = k*k;
+    f.m.position.set(f.p0.x + f.dx*k, lerp(f.p0.y, f.y1, e), f.p0.z + f.dz*k);
+    f.m.rotation.set(f.r0.x + f.rx*k, f.r0.y, f.r0.z + f.rz*k);
+  });
+}
+function quakeFocus(){
+  const c = new THREE.Vector3(); let n = 0;
+  PEOPLE.forEach(p => { if (p.q) { c.add(p.q.node.position); n++; } });
+  if (!n || simU < 16.5) return new THREE.Vector3(0, 0, 0.9);
+  return c.multiplyScalar(1/n);
+}
+
+
+/* ---------- Simulacro: corte con cuchillo ---------- */
+const CT_C = 33;
+const ctV = PEOPLE.find(p => p.name === 'Preelaborador de carnes');
+const ctR = PEOPLE.find(p => p.name === 'Preelaborador de vegetales');
+[ctV, ctR].forEach(p => { p.home = p.root.position.clone(); p.homeR = p.root.rotation.y; p.hd = p.homeR; });
+const bloodMat = new THREE.MeshStandardMaterial({color:0xA3161A, roughness:0.35, transparent:true, opacity:1});
+const gauzeMat = new THREE.MeshStandardMaterial({color:0xFAFAF7, roughness:0.9});
+const gloveMat = new THREE.MeshStandardMaterial({color:0x3B7DD8, roughness:0.45});
+// herida, gasas y venda en el antebrazo izquierdo de quien se corta
+const wound = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.11, 0.012), bloodMat); wound.position.set(0, -0.15, 0.043); ctV.aL.el.add(wound);
+const gauze1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.13, 0.025), gauzeMat); gauze1.position.set(0, -0.15, 0.05); ctV.aL.el.add(gauze1);
+const gauze2 = new THREE.Mesh(new THREE.BoxGeometry(0.115, 0.15, 0.025), gauzeMat); gauze2.position.set(0.005, -0.15, 0.07); ctV.aL.el.add(gauze2);
+const bandage = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.16, 14), gauzeMat); bandage.position.set(0, -0.15, 0); ctV.aL.el.add(bandage);
+const patch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 14), mc(0x2F6FBF)); patch.position.set(0, -0.15, 0); ctV.aL.el.add(patch);
+// guantes azules de quien ayuda
+const gloves = [ctR.aR, ctR.aL].map(a => { const g = new THREE.Mesh(new THREE.SphereGeometry(0.06, 10, 8), gloveMat); g.position.set(0, -0.29, 0); a.el.add(g); return g; });
+const cloth = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.02, 0.12), mc(0x5FA3C9)); cloth.position.set(0, -0.33, 0.02); ctR.aR.el.add(cloth);
+// gotas en el piso y mancha en la tabla
+const V0c = W3(64,614), V1c = W3(104,616);
+const drops = [];
+for (let i=0;i<11;i++) {
+  const k = i/10, d = new THREE.Mesh(new THREE.CylinderGeometry(0.025 + 0.02*((i*37)%5)/5, 0.03, 0.004, 12), bloodMat);
+  d.position.set(lerp(V0c.x - 0.05, V1c.x + 0.05, k) + Math.sin(i*2.3)*0.12, 0.014, lerp(V0c.z, V1c.z, k) + Math.cos(i*1.7)*0.14);
+  d.userData.t = 0.6 + i*0.75; d.visible = false; scene.add(d); drops.push(d);
+}
+const boardStain = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.004, 14), bloodMat);
+boardStain.position.copy(W3(26,600)).setY(0.925); boardStain.visible = false; scene.add(boardStain);
+function ctHide(){ [wound, gauze1, gauze2, bandage, patch, cloth, boardStain].forEach(m => m.visible = false); gloves.forEach(g => g.visible = false); drops.forEach(d => d.visible = false); bloodMat.opacity = 1; }
+ctHide();
+function nodeWalk(p, pa, s, run, dt){
+  const r = along(pa, s); p.root.position.set(r.pos.x, 0, r.pos.z);
+  p.hd = angLerp(p.hd, r.hd, Math.min(1, dt*9 || 1)); p.root.rotation.y = p.hd;
+  const per = run ? 1.8 : 1.3, st = Math.sin(2*Math.PI*s/per), amp = run ? 0.65 : 0.45;
+  p.L.rotation.x = amp*st; p.R.rotation.x = -amp*st;
+  p.body.position.y = 0.9 + (run ? 0.035 : 0.02)*Math.abs(Math.cos(2*Math.PI*s/per));
+  if (run) p.body.rotation.x = 0.1;
+  return st;
+}
+const cvAway = mkPath([[104,616],[150,640],[182,652]]);
+const crA = mkPath([[100,739],[140,680],[150,552]]);
+const crB = mkPath([[150,552],[140,590],[136,616]]);
+const crC = mkPath([[136,616],[110,592],[64,600]]);
+const crD = mkPath([[64,600],[64,700],[46,752]]);
+ctV.sim = (p, t, dt) => {
+  const u = activeSim === 'corte' ? simU : -1;
+  const at = (v, h) => { p.root.position.copy(v); p.hd = angLerp(p.hd, h, Math.min(1, dt*7 || 1)); p.root.rotation.y = p.hd; };
+  if (u < 0.4) { p.root.position.copy(p.home); p.hd = p.homeR; p.root.rotation.y = p.hd; if (u < 0) ctHide(); return p.act; }
+  // heridas y sangre
+  wound.visible = true; wound.scale.setScalar(Math.min(1, (u - 0.4)/0.4) + 0.01);
+  gauze1.visible = u > 6.9 && u < 18.6; gauze2.visible = u > 12.4 && u < 18.6;
+  bandage.visible = u >= 18.6 && u < 30.5; patch.visible = u >= 30.5;
+  boardStain.visible = u > 0.5 && u < 24.5;
+  const clean = ramp(u, 23.5, 26.5);
+  drops.forEach(d => { d.visible = u > d.userData.t && clean < 0.98; d.scale.set(1 - clean*0.95, 1, 1 - clean*0.95); });
+  if (u < 1.3) {                          // se corta: retira el brazo de golpe
+    at(p.home, p.homeR); const k = ramp(u, 0.4, 0.7);
+    pose(p.aL, lerp(-0.5, -1.0, k), 0.35, lerp(-0.95, -1.5, k)); pose(p.aR, lerp(-0.45, -0.9, k), lerp(0.1, 0.6, k), lerp(-1.0, -1.3, k));
+    p.body.rotation.x = -0.15*Math.sin(Math.PI*k); p.head.rotation.x = 0.45;
+    return null;
+  }
+  if (u < 2.6) {                          // se aleja del mesón sujetándose el brazo
+    const k = ramp(u, 1.3, 2.5); p.root.position.lerpVectors(p.home, V1c, k);
+    p.hd = angLerp(p.homeR, Math.PI/2, k); p.root.rotation.y = p.hd;
+    p.L.rotation.x = 0.3*Math.sin(u*9)*(1 - Math.abs(2*k - 1)); p.R.rotation.x = -p.L.rotation.x;
+    pose(p.aL, -1.0, 0.35, -1.5); pose(p.aR, -0.9, 0.6, -1.3); p.head.rotation.x = 0.45;
+    return null;
+  }
+  if (u < 6.6) { at(V1c, Math.PI/2); pose(p.aL, -1.0, 0.35, -1.5); pose(p.aR, -0.9, 0.6, -1.3); p.head.rotation.x = 0.4; p.body.rotation.x = 0.1; return null; }
+  if (u < 20.0) {                         // brazo en alto mientras le presionan la herida
+    at(V1c, Math.PI/2); const k = ramp(u, 6.6, 7.4);
+    pose(p.aL, lerp(-1.0, -2.0, k), lerp(0.35, 0.1, k), lerp(-1.5, -0.55, k)); pose(p.aR, lerp(-0.9, 0.05, k), lerp(0.6, 0.05, k), lerp(-1.3, -0.2, k));
+    p.head.rotation.x = -0.1; p.head.rotation.y = 0.15*Math.sin(u*0.7);
+    return null;
+  }
+  if (u < 22.2) { const st = nodeWalk(p, cvAway, (u - 20.0)*cvAway.len/2.2, false, dt); pose(p.aL, -1.3, 0.2, -1.2); pose(p.aR, 0.3*st, 0.04, -0.2); return null; }
+  at(cvAway.pts[cvAway.pts.length - 1], -Math.PI/2 + 0.4);
+  pose(p.aL, -1.1, 0.25, -1.3); pose(p.aR, -0.6, 0.45, -1.2); p.head.rotation.x = 0.15;   // espera con el brazo vendado
+  return null;
+};
+ctR.sim = (p, t, dt) => {
+  const u = activeSim === 'corte' ? simU : -1;
+  const at = (v, h) => { p.root.position.copy(v); p.hd = angLerp(p.hd, h, Math.min(1, dt*7 || 1)); p.root.rotation.y = p.hd; };
+  gloves.forEach(g => g.visible = u > 4.6 && u < 29.2); cloth.visible = u > 21.6 && u < 26.8;
+  if (u < 1.6) { p.root.position.copy(p.home); p.hd = p.homeR; p.root.rotation.y = p.hd; return p.act; }
+  if (u < 2.0) { at(p.home, p.homeR); p.head.rotation.y = -0.8*ramp(u, 1.6, 1.8); pose(p.aR, -0.3, 0.05, -0.4); pose(p.aL, -0.3, 0.05, -0.4); return null; }
+  if (u < 3.6) { const st = nodeWalk(p, crA, (u - 2.0)*crA.len/1.6, true, dt); pose(p.aR, -0.7*st, 0.05, -1.3); pose(p.aL, 0.7*st, 0.05, -1.3); return null; }
+  if (u < 5.0) {                          // abre el botiquín y se pone guantes
+    at(crA.pts[crA.pts.length - 1], Math.PI); const k = ramp(u, 3.6, 4.0);
+    if (u < 4.5) { pose(p.aR, -1.45*k, 0.1, -0.4); pose(p.aL, -1.45*k, 0.1, -0.4); }
+    else { pose(p.aR, -0.7, 0.35, -1.6 + 0.2*Math.sin(u*14)); pose(p.aL, -0.7, 0.35, -1.6 - 0.2*Math.sin(u*14)); }
+    return null;
+  }
+  if (u < 6.6) { nodeWalk(p, crB, (u - 5.0)*crB.len/1.6, false, dt); pose(p.aR, -0.6, 0.2, -1.2); pose(p.aL, -0.6, 0.2, -1.2); return null; }
+  if (u < 17.5) {                         // presión directa sobre la herida
+    at(crB.pts[crB.pts.length - 1], -Math.PI/2); const k = ramp(u, 6.6, 7.2);
+    const push = u > 7.2 ? 0.03*Math.sin(u*3) : 0;
+    pose(p.aR, lerp(-0.6, -1.75, k) + push, lerp(0.2, 0.32, k), lerp(-1.2, -0.75, k)); pose(p.aL, lerp(-0.6, -1.65, k) + push, lerp(0.2, 0.28, k), lerp(-1.2, -0.85, k));
+    p.head.rotation.x = -0.1; p.body.rotation.x = 0.05;
+    if (u > 12.0 && u < 12.6) { pose(p.aR, -1.4, 0.1, -0.6); }          // agrega una segunda gasa
+    return null;
+  }
+  if (u < 20.0) {                         // venda alrededor del antebrazo
+    at(crB.pts[crB.pts.length - 1], -Math.PI/2);
+    const w = u*7;
+    pose(p.aR, -1.75 + 0.15*Math.sin(w), 0.3 + 0.12*Math.cos(w), -0.75); pose(p.aL, -1.65, 0.28, -0.85);
+    return null;
+  }
+  if (u < 20.6) { at(crB.pts[crB.pts.length - 1], -Math.PI/2); pose(p.aR, -0.4, 0.1, -0.6); pose(p.aL, -0.4, 0.1, -0.6); return null; }
+  if (u < 21.8) { nodeWalk(p, crC, (u - 20.6)*crC.len/1.2, false, dt); pose(p.aR, -0.2, 0.05, -0.3); pose(p.aL, -0.2, 0.05, -0.3); return null; }
+  if (u < 27.0) {                         // bota lo contaminado y desinfecta el mesón
+    at(crC.pts[crC.pts.length - 1], -Math.PI/2 + 0.25);
+    const w = u*5;
+    pose(p.aR, -0.75 + 0.12*Math.sin(w), 0.15 + 0.2*Math.cos(w), -0.85); pose(p.aL, -0.45, 0.2, -1.1);
+    p.head.rotation.x = 0.4; p.body.rotation.x = 0.12;
+    return null;
+  }
+  if (u < 28.6) { nodeWalk(p, crD, (u - 27.0)*crD.len/1.6, false, dt); pose(p.aR, -0.2, 0.05, -0.3); pose(p.aL, -0.2, 0.05, -0.3); return null; }
+  at(crD.pts[crD.pts.length - 1], 0);
+  if (u < 29.4) { pose(p.aR, -0.7, 0.4, -1.5 + 0.3*Math.sin(u*12)); pose(p.aL, -0.7, 0.4, -1.5); return null; }   // se saca los guantes
+  return 'hands';
+};
+
 const SCEN = {
   fuego: {dur:SIM_C, offset:3.6, cues:CUES_FUEGO, btn:document.getElementById('accidente'), txt:document.getElementById('acc-txt'), label:'Accidente', running:'Accidente en curso',
     steps:Array.from(document.querySelectorAll('#sim-steps li')), clock:document.getElementById('sim-clock'),
@@ -1387,6 +1752,17 @@ const SCEN = {
     steps:Array.from(document.querySelectorAll('#al-steps li')), clock:document.getElementById('al-clock'),
     status:u => u < 0.6 ? 'Servicio normal' : u < 14.6 ? 'Emergencia en curso' : 'Primeros auxilios',
     view:() => [W3(575,1095).setY(6.2), W3(440,885).setY(0.4)], a:() => alVictim.root.position, b:() => maitre.outer.position,
+    layer:() => { if (!peopleGrp.visible) { document.getElementById('ly-personas').checked = true; peopleGrp.visible = true; } }},
+  sismo: {dur:QK_C, offset:0, cues:CUES_SISMO, btn:document.getElementById('sismo'), txt:document.getElementById('qk-txt'), label:'Terremoto', running:'Terremoto en curso',
+    steps:Array.from(document.querySelectorAll('#qk-steps li')), clock:document.getElementById('qk-clock'),
+    status:u => u < 1 ? 'Servicio normal' : u < 13 ? 'Sismo en curso' : u < 16.5 ? 'Corte de gas' : 'Evacuación',
+    view:() => [new THREE.Vector3(6.6, 11.5, 13.0), new THREE.Vector3(0, 0, 1.0)], focus:quakeFocus,
+    onStart:quakeStart, onEnd:quakeEnd, layer:() => {}},
+  corte: {dur:CT_C, offset:0, cues:CUES_CORTE, btn:document.getElementById('corte'), txt:document.getElementById('ct-txt'), label:'Corte', running:'Corte en curso',
+    steps:Array.from(document.querySelectorAll('#ct-steps li')), clock:document.getElementById('ct-clock'),
+    status:u => u < 0.4 ? 'Trabajo normal' : u < 17.5 ? 'Emergencia en curso' : u < 20.6 ? 'Primeros auxilios' : 'Limpieza y cierre',
+    view:() => [W3(330,870).setY(6.2), W3(110,640).setY(0.4)], a:() => ctV.root.position, b:() => ctR.root.position,
+    onEnd:() => { ctHide(); [ctV, ctR].forEach(p => { p.root.position.copy(p.home); p.root.rotation.y = p.homeR; p.hd = p.homeR; }); },
     layer:() => { if (!peopleGrp.visible) { document.getElementById('ly-personas').checked = true; peopleGrp.visible = true; } }}
 };
 let clockT = 0;
@@ -1397,6 +1773,7 @@ function simClockTick(t){
   if (simU >= SCEN[activeSim].dur) endSim();
 }
 function endSim(){
+  if (SCEN[activeSim] && SCEN[activeSim].onEnd) SCEN[activeSim].onEnd();
   activeSim = null; simStart = null; simU = 0; followOn = false;
   Object.values(SCEN).forEach(sc => { sc.btn.disabled = false; sc.txt.textContent = sc.label; });
   setView('iso'); narrate(END_CUE); loop.once = false;
@@ -1405,6 +1782,7 @@ function startSim(k){
   if (activeSim) return;
   const sc = SCEN[k];
   activeSim = k; simStart = clockT - sc.offset; simU = sc.offset;
+  if (sc.onStart) sc.onStart();
   narrationStart();
   Object.values(SCEN).forEach(o => o.btn.disabled = true); sc.txt.textContent = sc.running;
   closeView(k);
@@ -1432,7 +1810,8 @@ const focus = new THREE.Vector3(), camDelta = new THREE.Vector3();
 function followAccident(dt){
   if (!followOn || !activeSim || anim) return;
   const sc = SCEN[activeSim];
-  focus.copy(sc.a()).add(sc.b()).multiplyScalar(0.5); focus.y = 0.4;
+  if (sc.focus) focus.copy(sc.focus()); else focus.copy(sc.a()).add(sc.b()).multiplyScalar(0.5);
+  focus.y = 0.4;
   const k = 1 - Math.exp(-dt*2.6);
   camDelta.copy(focus).sub(controls.target).multiplyScalar(k);
   controls.target.add(camDelta); camera.position.add(camDelta);
@@ -1441,6 +1820,10 @@ document.getElementById('sim-go').addEventListener('click', () => closeView('fue
 document.getElementById('al-go').addEventListener('click', () => closeView('alergia'));
 SCEN.fuego.btn.addEventListener('click', () => startSim('fuego'));
 SCEN.alergia.btn.addEventListener('click', () => startSim('alergia'));
+SCEN.sismo.btn.addEventListener('click', () => startSim('sismo'));
+SCEN.corte.btn.addEventListener('click', () => startSim('corte'));
+document.getElementById('ct-go').addEventListener('click', () => closeView('corte'));
+document.getElementById('qk-go').addEventListener('click', () => closeView('sismo'));
 
 const grid = new THREE.GridHelper(16, 16, 0x6c736d, 0x9aa19a);
 grid.position.y = 0.016; grid.material.transparent = true; grid.material.opacity = 0.55; grid.visible = false; scene.add(grid);
@@ -1549,7 +1932,7 @@ ROOMS.forEach(r => {
   el.addEventListener('click', () => selectRoom(r, true));
   labelsEl.appendChild(el); labelEls.push({el, room:r, pos:new THREE.Vector3(r.center.x, 0.2, r.center.z)});
 });
-[[51,-75,'Acceso y salida',''],[965,70,'Retiro de residuos',''],[985,380,'Salida de emergencia','exit'],[620,1065,'Salón comedor','']].forEach(([px,pz,t,c]) => {
+[[51,-75,'Acceso y salida',''],[965,70,'Retiro de residuos',''],[985,380,'Salida de emergencia','exit'],[620,1065,'Salón comedor',''],[1095,235,'Zona de seguridad','exit'],[60,-245,'Zona de seguridad','exit'],[620,1200,'Zona de seguridad','exit']].forEach(([px,pz,t,c]) => {
   const el = document.createElement('div'); el.className = 'lbl ext ' + c; el.textContent = t; labelsEl.appendChild(el);
   const [x,z] = P(px,pz); labelEls.push({el, pos:new THREE.Vector3(x,0.2,z)});
 });
@@ -1643,6 +2026,7 @@ function loop(t){
     if (k >= 1) anim = null;
   }
   simClockTick(t/1000);
+  quakeWorld(t/1000);
   followAccident(reduced ? 1 : ldt);
   controls.update();
   if (!reduced) updateDots(t);
